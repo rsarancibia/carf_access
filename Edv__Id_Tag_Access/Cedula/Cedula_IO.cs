@@ -1,4 +1,5 @@
 ﻿using Edv__Id_Tag_Access.myLog;
+using Edv__Id_Tag_Access.Pace;
 using Serilog;
 using Serilog.Core;
 
@@ -44,6 +45,7 @@ namespace Edv__Id_Tag_Access.Cedula
 
         bool   glb_Old_Tag = false;
 
+        byte[] glb_CardAccess = new byte[256];
 
         public delegate int IODelegate(
             byte[] sendBuffer,
@@ -176,7 +178,9 @@ namespace Edv__Id_Tag_Access.Cedula
                     }
                 }
 
-
+                //
+                // SELECT DIR
+                //
                 Apdu_Plain_Build(APDU_HEADER__SELECT_DIR, payload: APDU_PAYLOAD_SELECT_DIR, Le: 0);
                 glb_IO_Delegate(glb_Send, glb_Send_Total_Bytes, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2);
                 if (glb_Sw1Sw2 != APDU_ANS_OK)
@@ -185,6 +189,9 @@ namespace Edv__Id_Tag_Access.Cedula
                 }
                 else
                 {
+                    //
+                    // READBINARY on DIR
+                    //
                     Apdu_Plain_Build(APDU_HEADER__READ_BINARY_ON_DIR, Le: 0);
                     glb_IO_Delegate(glb_Send, glb_Send_Total_Bytes, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2);
                     if (glb_Sw1Sw2 != APDU_ANS_OK)
@@ -193,7 +200,9 @@ namespace Edv__Id_Tag_Access.Cedula
                     }
                 }
 
-
+                //
+                // SELECT CARDACCESS
+                //
                 Apdu_Plain_Build(APDU_HEADER__SELECT_CARD_ACCESS, payload: APDU_PAYLOAD_SELECT_CARD_ACCESS, Le: 0);
                 glb_IO_Delegate(glb_Send, glb_Send_Total_Bytes, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2);
                 if (glb_Sw1Sw2 != APDU_ANS_OK)
@@ -202,6 +211,9 @@ namespace Edv__Id_Tag_Access.Cedula
                 }
                 else
                 {
+                    //
+                    // READBINARY on DIR
+                    //
                     Apdu_Plain_Build(APDU_HEADER__READ_BINARY_ON_DIR, Le: 0);
                     glb_IO_Delegate(glb_Send, glb_Send_Total_Bytes, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2);
                     if (glb_Sw1Sw2 != APDU_ANS_OK)
@@ -210,28 +222,26 @@ namespace Edv__Id_Tag_Access.Cedula
                     }
                     else
                     {
-                        // ok 
-//                        // Decode CardAccessData
-//# ifdef _DEBUG
-//                        PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - OK Read Binary on Dir CA [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
-//#endif
-//                        memcpy_s(EF_CARDACCESS, iCardAccessLen, aApduResponse, iApduResponseLen);
-//                        iCardAccessLen = iApduResponseLen;
-//# ifdef _DEBUG
-//                        PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - CardAccess [%ld]", iCardAccessLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, EF_CARDACCESS, iCardAccessLen);
 
+                        Log.Logger.HexDump(glb_RcvData, data_lenght: glb_RcvData_Total_Bytes, message: "Contenido de CardAccess READ Binary");
+
+                        Array.Copy(glb_RcvData, 0, glb_CardAccess, 0, glb_RcvData_Total_Bytes);
                     }
 
                 }
 
 
-                /*
+                if (!glb_Old_Tag)
+                { 
+                    // = Tarjeta nueva -> PACE
+                    Pace_Do.OpenPACE_Init();
 
-                        private byte[] APDU_HEADER__SELECT_CARD_ACCESS = { 0x00, 0xA4, 0x02, 0x0C };
-        private byte[] APDU_PAYLOAD_SELECT_CARD_ACCESS = { 0x01, 0x1C };
+                    IntPtr ptr =    Pace_Do.PACE_CreateSecret(Pace_Do.Get_SecretFormat(Cedula_Info.baNumeroDocumento, Cedula_Info.baFechaNacimiento, Cedula_Info.baFechaExpiracion), 91);
 
-                */
 
+                    glb_Old_Tag = false;
+
+                }
 
                 break;
 
