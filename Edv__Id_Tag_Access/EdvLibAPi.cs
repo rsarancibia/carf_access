@@ -61,12 +61,12 @@ namespace Edv__Id_Tag_Access
                     break;
                 }
 
-                glb_FingerPrint_Reader = new();
-                if(glb_FingerPrint_Reader.Init() != 0)
-                    {
-                    status = 4;
-                    break;
-                }
+                //glb_FingerPrint_Reader = new();
+                //if(glb_FingerPrint_Reader.Init() != 0)
+                //    {
+                //    status = 4;
+                //    break;
+                //}
 
                 glb_api_Tag_Type = tag_type;
 

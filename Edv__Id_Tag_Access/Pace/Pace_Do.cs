@@ -10,6 +10,7 @@ namespace Edv__Id_Tag_Access.Pace
         private static byte[] glb_sMrz      = new byte[glb_Secret_size];
 
 
+
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int OpenPACE_Init();
 
