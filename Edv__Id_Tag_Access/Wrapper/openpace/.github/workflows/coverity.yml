@@ -1,0 +1,23 @@
+name: Coverity Scan
+
+# We only want to test master or explicitly via coverity branch
+on:
+  push:
+    branches: [master, coverity]
+
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - run: .github/build.sh coverity
+    - uses: vapier/coverity-scan-action@2dd9b03b1987669de7a6db4203ba44b76a636ce4 # v0.0.1
+      with:
+        project: frankmorgner%2Fopenpace
+        token: ${{ secrets.COVERITY_SCAN_TOKEN }}
+        email: 'frankmorgner@gmail.com'
+        command: 'make'

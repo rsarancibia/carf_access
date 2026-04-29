@@ -1,0 +1,32 @@
+name: Ubuntu
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.i'
+      - '**.in'
+      - '**.sh'
+      - '**.py'
+      - '**.go'
+      - '**.java'
+      - '**.rb'
+      - .github/workflows/ubuntu.yml
+  push:
+
+
+permissions:  # added using https://github.com/step-security/secure-repo
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - run: .github/build.sh ubuntu
+    - uses: actions/upload-artifact@v6
+      with:
+        name: openpace-${{ github.ref_name }}-src
+        path:
+          openpace*.tar.gz

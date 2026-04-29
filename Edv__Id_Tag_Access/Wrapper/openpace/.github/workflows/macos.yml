@@ -1,0 +1,27 @@
+name: macOS
+
+on:
+  pull_request:
+    paths:
+      - '**.c'
+      - '**.h'
+      - '**.i'
+      - '**.in'
+      - '**.sh'
+      - '**.py'
+      - '**.go'
+      - '**.java'
+      - '**.rb'
+      - .github/workflows/macos.yml
+  push:
+
+
+permissions:  # added using https://github.com/step-security/secure-repo
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+    - uses: actions/checkout@v6
+    - run: .github/build.sh macos
