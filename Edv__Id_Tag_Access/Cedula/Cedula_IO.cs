@@ -3,9 +3,7 @@ using Edv__Id_Tag_Access.Pace;
 using Edv__Id_Tag_Access.Secure_Utils;
 using PCSC.Iso7816;
 using Serilog;
-using Serilog.Core;
 using System.Runtime.InteropServices;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Edv__Id_Tag_Access.Cedula
 {
@@ -26,7 +24,29 @@ namespace Edv__Id_Tag_Access.Cedula
             IntPtr rx,
             ref int rxLen
         );
+        /// <summary>
+        /// ///////////////////////////////////////////
+        /// </summary>
+        /// <param name="cb"></param>
 
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Register_TxRxNfc_Callback(TRANSMIT cb);
+
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void TRANSMIT(
+            IntPtr dummy,
+            IntPtr tx,
+            int txLen,
+            IntPtr rx,
+            ref int rxLen
+        );
+
+
+        /// <summary>
+        /// ///////////////////////////////////////////////////////////////
+        /// </summary>
 
 
         private const string cTIPO_CEDULA_ERROR = "IO Error";
@@ -37,9 +57,9 @@ namespace Edv__Id_Tag_Access.Cedula
         private static TxRxCallback? _callbackRef;
 
 
-        private byte[] APDU_HEADER__SELECT_APP = { 0x00, 0xA4, 0x04, 0x0C};
+        private byte[] APDU_HEADER__SELECT_APP = { 0x00, 0xA4, 0x04, 0x0C };
 
-        private byte[] APDU_PAYLOAD_SELECT_INSTANCE__NEW_APPICAO_ON = { 0xA0, 0x00, 0x00, 0x00, 0x77, 0x03, 0x08, 0x70, 0x07, 0x01, 0xFE, 0x00, 0x00, 0x04, 0x00, 0x01};
+        private byte[] APDU_PAYLOAD_SELECT_INSTANCE__NEW_APPICAO_ON = { 0xA0, 0x00, 0x00, 0x00, 0x77, 0x03, 0x08, 0x70, 0x07, 0x01, 0xFE, 0x00, 0x00, 0x04, 0x00, 0x01 };
 
         private byte[] APDU_PAYLOAD_SELECT_INSTANCE__OLD_APPICAO_ON = { 0xA0, 0x00, 0x00, 0x02, 0x47, 0x10, 0x01 };
 
@@ -48,7 +68,7 @@ namespace Edv__Id_Tag_Access.Cedula
         private byte[] APDU_PAYLOAD_SELECT_INSTANCE__OLD_APPICAO_OFF = { 0xE8, 0x28, 0xBD, 0x08, 0x0F, 0xD2, 0x50, 0x43, 0x68, 0x6C, 0x43, 0x43, 0x2D, 0x65, 0x49, 0x44 };
 
         private byte[] APDU_HEADER__SELECT_MASTER_FILE_OLD = { 0x00, 0xA4, 0x00, 0x0C };
-        private byte[] APDU_PAYLOAD_SELECT_MASTER_FILE_OLD = { 0x3F, 0x00};
+        private byte[] APDU_PAYLOAD_SELECT_MASTER_FILE_OLD = { 0x3F, 0x00 };
 
         private byte[] APDU_HEADER__SELECT_DIR = { 0x00, 0xA4, 0x02, 0x0C };
         private byte[] APDU_PAYLOAD_SELECT_DIR = { 0x2F, 0x00 };
@@ -84,7 +104,7 @@ namespace Edv__Id_Tag_Access.Cedula
 
         ushort glb_Sw1Sw2 = 0;
 
-        bool   glb_Old_Tag = false;
+        bool glb_Old_Tag = false;
 
         byte[] glb_CardAccess = new byte[256];
 
@@ -101,24 +121,54 @@ namespace Edv__Id_Tag_Access.Cedula
         public delegate void Tag_Type(string tag_type);
 
 
-        private IODelegate?     glb_IO_Delegate = null;
-        private Detect_Card?    glb_Detect_Card_Delegate = null;
-        private Tag_Type?       glb_Tag_Type = null;
+        private IODelegate? glb_IO_Delegate = null;
+        private Detect_Card? glb_Detect_Card_Delegate = null;
+        private Tag_Type? glb_Tag_Type = null;
 
 
-        public void SetIO(Detect_Card detectCardFunc, IODelegate ioFunc, Tag_Type tag_type) 
+        public void SetIO(Detect_Card detectCardFunc, IODelegate ioFunc, Tag_Type tag_type)
         {
-            glb_Detect_Card_Delegate    =   detectCardFunc;
-            glb_IO_Delegate             =   ioFunc;
-            glb_Tag_Type                =   tag_type;
+            glb_Detect_Card_Delegate = detectCardFunc;
+            glb_IO_Delegate = ioFunc;
+            glb_Tag_Type = tag_type;
 
             _callbackRef = MyTxRx;
             Register_TxRx_Callback(_callbackRef);
+
+            Register_TxRxNfc_Callback(TransmitRecieve);
 
             Pace_Do.OpenPACE_Init();
 
         }
 
+        private void TransmitRecieve(IntPtr dummy,
+                                        IntPtr tx,
+                                        int txLen,
+                                        IntPtr rx,
+                                        ref int rxLen)
+        {
+            if (glb_IO_Delegate is null) return;
+
+            byte[] managedTx = new byte[txLen];
+            Marshal.Copy(tx, managedTx, 0, txLen);
+
+            byte[] received = new byte[256];
+            int total_received = 0;
+            ushort sw1asw2 = 0;
+
+            glb_IO_Delegate(managedTx, txLen, received, ref total_received, ref sw1asw2);
+
+            // 🔹 Copiar respuesta hacia rx (memoria no administrada)
+            if (total_received > 0)
+            {
+                Marshal.Copy(received, 0, rx, total_received);
+                rxLen = total_received;
+            }
+            else
+            {
+                rxLen = 0;
+            }
+        }
 
         private int MyTxRx(IntPtr tx, int txLen, IntPtr rx, ref int rxLen)
         {

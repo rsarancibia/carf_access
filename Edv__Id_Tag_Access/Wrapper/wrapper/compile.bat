@@ -7,38 +7,34 @@ REM dumpbin /exports openpace_wrapper.dll
 
 REM SOLEMBIO_DATAFIELD_MAX ??
 
-echo POR QUE NO ANDA !
+set home=0
 
-REM if not defined OPENSSL_DIR (
+if "%home%"=="1" (
+
+	echo Ejecutando en HOME
+
 	set OPENSSL_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\openssl_1_0_2
-REM )
-
-REM if not defined OPENSSL_LIB (
 	set OPENSSL_LIB=%OPENSSL_DIR%\static\lib\libeay32.lib
-REM )
-
-REM if not defined OPENPACE_SRC_DIR (
 	set OPENPACE_SRC_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\openpace\src
-REM )
-
-REM if not defined NFC_DIR (
 	set NFC_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\nfc_access
-REM )
-
-REM if not defined DEST_DIR (
 	set DEST_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\lib
-REM )
 
+) else (
+    echo Ejecutando en ACER
+
+	set OPENSSL_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\openssl_1_0_2
+	set OPENSSL_LIB=%OPENSSL_DIR%\static\lib\libeay32.lib
+	set OPENPACE_SRC_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\openpace\src
+	set NFC_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\wrapper\nfc_access
+	set DEST_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\lib
+
+)
 
 echo OPENSSL_DIR      : %OPENSSL_DIR%
 echo OPENSSL_LIB      : %OPENSSL_LIB%
 echo OPENPACE_SRC_DIR : %OPENPACE_SRC_DIR%
 echo NFC_DIR          : %NFC_DIR%
 echo DEST_DIR         : %DEST_DIR%
-
-echo TEST             : %OPENPACE_SRC_DIR%\eac
-
-
 
 
 cl /LD /MD ^
