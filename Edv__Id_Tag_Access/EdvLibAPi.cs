@@ -6,6 +6,8 @@ using Edv__Id_Tag_Access.myLog;
 using Edv__Id_Tag_Access.Pace;
 using Edv__Id_Tag_Access.Secure_Utils;
 using Serilog;
+using System.Net.NetworkInformation;
+using System.Runtime.InteropServices;
 using static Edv__Id_Tag_Access.Cedula.Cedula_IO;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -13,6 +15,11 @@ namespace Edv__Id_Tag_Access
 {
     public class EdvLibAPi
     {
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Init();
+
+
         private const string cREADER_NAME = "HID Global OMNIKEY 5022 Smart Card Reader 0"; 
 
 
@@ -29,13 +36,17 @@ namespace Edv__Id_Tag_Access
         public int Init(api_Tag_Type tag_type)
         {
             int status = 0;
+            int res = 0;
 
             while (true)
             {
                 LoggerConfig.Init();
                 Log.Information("DLL Init - Start");
 
-                Test();
+                //Test();
+
+                string qr_rafa = "https://portal.sidiv.registrocivil.cl/docstatus?RUN=12845657-0&type=CEDULA&serial=B5F089055&mrz=B5F089055075040793504071&name=RAFAEL%20SEBASTI%C1N%20%20ARANCIBIA%20AMPUERO";
+                Cedula_Info.Set_Info__Qr(qr_rafa);
 
 
 
@@ -62,7 +73,7 @@ namespace Edv__Id_Tag_Access
                 }
 
                 //glb_FingerPrint_Reader = new();
-                //if(glb_FingerPrint_Reader.Init() != 0)
+                //if(glb_FingerPrint_Reader.Init() != 0) 
                 //    {
                 //    status = 4;
                 //    break;
@@ -77,6 +88,15 @@ namespace Edv__Id_Tag_Access
                     glb_Cedula_IO.SetIO(glb_Nfc_Reader.Detect_Card, glb_Nfc_Reader.IO, (x) => glb_api_Tag_Type(x));
                 }
 
+                res = status = Edv_Init();
+                if (res != 0)
+                {
+                    Log.Error("Edv_Init() = " + res.ToString());
+
+                    status = 10;
+                    break;
+                } 
+
                 break;
             }
 
@@ -84,6 +104,15 @@ namespace Edv__Id_Tag_Access
 
             return status;
         }
+
+        public void Test_Lector()
+        { 
+            if (glb_Cedula_IO is not null)
+            {
+                Cedula_IO.Test_Reader();
+            }
+        }
+
 
         public int Id_Tag__MOC()
         {
@@ -391,10 +420,10 @@ namespace Edv__Id_Tag_Access
             byte[] buffer = new byte[256];
             int len = buffer.Length;
 
-            int res = Pace_Do.PACE_Step1(ctx, sec, buffer, ref len);
+            //int res = Pace_Do.PACE_Step1(ctx, sec, buffer, ref len);
 
-            Console.WriteLine("Step1 result: " + res);
-            Console.WriteLine("Length: " + len);
+            //Console.WriteLine("Step1 result: " + res);
+            //Console.WriteLine("Length: " + len);
 
 
 

@@ -15,10 +15,6 @@ namespace Edv__Id_Tag_Access.Pace
         public static extern int OpenPACE_Init();
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int OpenPACE_SHA256(byte[] input, int inputLen, byte[] output);
-
-
-        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr EAC_Create();
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -26,7 +22,8 @@ namespace Edv__Id_Tag_Access.Pace
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr PACE_CreateSecret(byte[] secret, int len);
-
+        
+        
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void PACE_FreeSecret(IntPtr sec);
 
@@ -36,8 +33,82 @@ namespace Edv__Id_Tag_Access.Pace
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int EAC_InitCardAccess(IntPtr ctx, byte[] data, UIntPtr dataLen);
 
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step1_Alloc(  IntPtr ctx,
+                                                    IntPtr sec,
+                                                    out IntPtr output,
+                                                    out int outputLen);
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step2( IntPtr ctx,
+                                            IntPtr sec,
+                                            byte[] input,
+                                            int inputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step3A_Alloc( IntPtr ctx,
+                                                    out IntPtr output,
+                                                    out int outputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step_3A_Map_Generator(IntPtr ctx,
+                                            byte[] input,
+                                            int inputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_STEP_3B_Generate_Ephemeral( IntPtr ctx,
+                                                    out IntPtr output,
+                                                    out int outputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step_3B_Compute_Shared_Secret(    IntPtr ctx,
+                                                                        byte[] input,
+                                                                        int inputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step_3C_Derive_Keys(IntPtr ctx);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void OpenPACE_Free(IntPtr ptr);
+
+
+        //[DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        //public static extern int PACE_Step_3D_Compute_Authentication_Token( IntPtr ctx,
+        //                                                                    byte[] input,
+        //                                                                    int inputLen,
+        //                                                                    out IntPtr output,              
+        //                                                                    out int outputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step_3D_Compute_Authentication_Token( IntPtr ctx,
+                                                                            byte[] input,
+                                                                            int inputLen,
+                                                                            out IntPtr output,
+                                                                            out int outputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int PACE_Step_3D_Verify(   IntPtr ctx,
+                                                        byte[] input,
+                                                        int inputLen);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int EAC_SetEncryptionCtx(  IntPtr ctx,
+                                                        int id);
+
         //////////////////////////////////////////////////////////////////////////////////////////////
         //////////////////////////////////////////////////////////////////////////////////////////////
+        public static readonly int EAC_ID_PACE = 0;
+
         public static byte[] Get_SecretFormat(byte[] DocNum, byte[] BirthDay, byte[] ExpDate)
         {
             // llenar con '<'

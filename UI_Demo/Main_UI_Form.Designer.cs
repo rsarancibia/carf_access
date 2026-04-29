@@ -31,12 +31,13 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             richTB_Log = new RichTextBox();
             panel1 = new Panel();
+            btnClearLog = new Button();
             lblTipo_Cedula_Val = new Label();
             lblTipo_Cedula = new Label();
             btnDoMoc = new Button();
             pbDisplay = new PictureBox();
             btnCapture_Img = new Button();
-            btnClearLog = new Button();
+            button1 = new Button();
             tableLayoutPanel1.SuspendLayout();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbDisplay).BeginInit();
@@ -68,6 +69,7 @@
             // 
             // panel1
             // 
+            panel1.Controls.Add(button1);
             panel1.Controls.Add(btnClearLog);
             panel1.Controls.Add(lblTipo_Cedula_Val);
             panel1.Controls.Add(lblTipo_Cedula);
@@ -79,6 +81,16 @@
             panel1.Name = "panel1";
             panel1.Size = new Size(822, 315);
             panel1.TabIndex = 1;
+            // 
+            // btnClearLog
+            // 
+            btnClearLog.Location = new Point(738, 278);
+            btnClearLog.Name = "btnClearLog";
+            btnClearLog.Size = new Size(75, 23);
+            btnClearLog.TabIndex = 5;
+            btnClearLog.Text = "Clear";
+            btnClearLog.UseVisualStyleBackColor = true;
+            btnClearLog.Click += btnClearLog_Click;
             // 
             // lblTipo_Cedula_Val
             // 
@@ -130,15 +142,15 @@
             btnCapture_Img.UseVisualStyleBackColor = true;
             btnCapture_Img.Click += button1_Click;
             // 
-            // btnClearLog
+            // button1
             // 
-            btnClearLog.Location = new Point(738, 278);
-            btnClearLog.Name = "btnClearLog";
-            btnClearLog.Size = new Size(75, 23);
-            btnClearLog.TabIndex = 5;
-            btnClearLog.Text = "Clear";
-            btnClearLog.UseVisualStyleBackColor = true;
-            btnClearLog.Click += btnClearLog_Click;
+            button1.Location = new Point(380, 225);
+            button1.Name = "button1";
+            button1.Size = new Size(75, 23);
+            button1.TabIndex = 6;
+            button1.Text = "button1";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click_1;
             // 
             // Main_UI_Form
             // 
@@ -168,5 +180,6 @@
         private Label lblTipo_Cedula;
         private Label lblTipo_Cedula_Val;
         private Button btnClearLog;
+        private Button button1;
     }
 }
