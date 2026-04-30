@@ -4,27 +4,48 @@ using Edv__Id_Tag_Access.Devices.NFC;
 using Edv__Id_Tag_Access.ImgEngines;
 using Edv__Id_Tag_Access.myLog;
 using Edv__Id_Tag_Access.Pace;
-using Edv__Id_Tag_Access.Secure_Utils;
 using Serilog;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
-using static Edv__Id_Tag_Access.Cedula.Cedula_IO;
-using static System.Net.Mime.MediaTypeNames;
+using System.Text;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Edv__Id_Tag_Access
 {
     public class EdvLibAPi
     {
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr PACE_CreateSecret(byte[] secret, int len);
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Edv_Set_Template(byte[] template, int template_len);
+
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Register_Log_callback(Log_Callback cb);
+
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate void Log_Callback(
+            IntPtr infoBuffer,
+            int infoBufferLen
+        );
+
+        private static Log_Callback? _Log_Callback_Ref;
+
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int Edv_Init();
 
 
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Moc();
+
         private const string cREADER_NAME = "HID Global OMNIKEY 5022 Smart Card Reader 0"; 
 
 
-        private NFC_Reader? glb_Nfc_Reader = null;
-        private FingerPrintReader? glb_FingerPrint_Reader = null;
+        private NFC_Reader?         glb_Nfc_Reader = null;
+        private FingerPrintReader?  glb_FingerPrint_Reader = null;
         private Cedula_IO?          glb_Cedula_IO = null;
 
 
@@ -41,7 +62,10 @@ namespace Edv__Id_Tag_Access
             while (true)
             {
                 LoggerConfig.Init();
-                Log.Information("DLL Init - Start");
+
+                Register_Log_callback(Log_Fnc);
+
+                Log.Information("DLL Init - Start"); 
 
                 //Test();
 
@@ -49,9 +73,14 @@ namespace Edv__Id_Tag_Access
                 Cedula_Info.Set_Info__Qr(qr_rafa);
 
 
+                res = status = Edv_Init();
+                if (res != 0)
+                {
+                    Log.Error("Edv_Init() = " + res.ToString());
 
-
-
+                    status = 10;
+                    break;
+                }
 
                 if (glb_Nfc_Reader is not null)
                 {
@@ -72,12 +101,12 @@ namespace Edv__Id_Tag_Access
                     break;
                 }
 
-                //glb_FingerPrint_Reader = new();
-                //if(glb_FingerPrint_Reader.Init() != 0) 
-                //    {
-                //    status = 4;
-                //    break;
-                //}
+                glb_FingerPrint_Reader = new();
+                if (glb_FingerPrint_Reader.Init() != 0)
+                {
+                    status = 4;
+                    break;
+                }
 
                 glb_api_Tag_Type = tag_type;
 
@@ -87,15 +116,6 @@ namespace Edv__Id_Tag_Access
 
                     glb_Cedula_IO.SetIO(glb_Nfc_Reader.Detect_Card, glb_Nfc_Reader.IO, (x) => glb_api_Tag_Type(x));
                 }
-
-                res = status = Edv_Init();
-                if (res != 0)
-                {
-                    Log.Error("Edv_Init() = " + res.ToString());
-
-                    status = 10;
-                    break;
-                } 
 
                 break;
             }
@@ -109,7 +129,12 @@ namespace Edv__Id_Tag_Access
         { 
             if (glb_Cedula_IO is not null)
             {
-                Cedula_IO.Test_Reader();
+                //Cedula_IO.Test_Reader();
+
+                glb_Nfc_Reader?.Detect_Card();
+
+                Edv_Moc();
+
             }
         }
 
@@ -159,6 +184,32 @@ namespace Edv__Id_Tag_Access
                 }
 
                 raw_image = glb_FingerPrint_Reader.Img_Raw_Buffer ?? Array.Empty<byte>();
+
+                byte[] iso_image = Array.Empty<byte>();
+
+                if (Finger__Get_Iso_19794_2(    raw_image,
+                                                (ushort)glb_FingerPrint_Reader.Img_Width,
+                                                (ushort)glb_FingerPrint_Reader.Img_Height,
+                                                (ushort)glb_FingerPrint_Reader.Img_dpi, ref iso_image) != 0)
+                {
+                    status = 3;
+                    break;
+                }
+
+                byte[] iso_compact = Array.Empty<byte>();
+
+                if (IsoCompact.Convert( iso_image,
+                                        IsoCompact.MAX_MOC_ISO_LEN_TO_TX,
+                                        IsoCompact.ISOCOMPACT_SCALE,
+                                        ref iso_compact) != 0)
+                {
+                    status = 3;
+                    break;
+                }
+
+                Edv_Set_Template(iso_compact, iso_compact.Length);
+
+                Log.Logger.HexDump(iso_compact,data_lenght : 16);
 
                 break;
             }
@@ -227,6 +278,21 @@ namespace Edv__Id_Tag_Access
 
             Log.Information("DLL End - Done");
         }
+
+        private void Log_Fnc(IntPtr buffer, int bufferLen)
+        {
+            // Copiar TX desde puntero nativo → array .NET
+            byte[] managedTx = new byte[bufferLen];
+            Marshal.Copy(buffer, managedTx, 0, bufferLen);
+
+            string s = Encoding.UTF8.GetString(managedTx);
+            
+            Log.Information(s);
+        }
+
+
+
+
         /// <summary>
         /// ///////////////////////////////////////////////////////////////////////////////////////
         /// </summary>

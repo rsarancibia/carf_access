@@ -7,34 +7,56 @@ REM dumpbin /exports openpace_wrapper.dll
 
 REM SOLEMBIO_DATAFIELD_MAX ??
 
-set home=0
+
+REM /link ^
+REM /OUT:openpace_wrapper.dll ^
+REM /IMPLIB:openpace_wrapper.lib ^
+REM /NODEFAULTLIB:LIBCMT
+
+REM copy /Y openpace_wrapper.dll "%DEST_DIR%"
+REM copy /Y openpace_wrapper.lib "%DEST_DIR%"
+
+
+set home=1
 
 if "%home%"=="1" (
 
-	echo Ejecutando en HOME
+	echo.
+	echo			Ejecutando en HOME
+	echo.
 
-	set OPENSSL_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\openssl_1_0_2
-	set OPENSSL_LIB=%OPENSSL_DIR%\static\lib\libeay32.lib
-	set OPENPACE_SRC_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\openpace\src
-	set NFC_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\nfc_access
-	set DEST_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\lib
+	set BASE_DIR=I:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access
 
 ) else (
-    echo Ejecutando en ACER
 
-	set OPENSSL_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\openssl_1_0_2
-	set OPENSSL_LIB=%OPENSSL_DIR%\static\lib\libeay32.lib
-	set OPENPACE_SRC_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\openpace\src
-	set NFC_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\wrapper\nfc_access
-	set DEST_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\lib
+	echo.
+	echo			Ejecutando en ACER
+	echo.
 
+	set BASE_DIR=d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access
 )
+
+set OPENSSL_DIR=""
+set OPENSSL_LIB=""
+set OPENPACE_SRC_DIR=""
+set NFC_DIR=""
+set DEST_DIR=""
+
+set OPENSSL_DIR=%BASE_DIR%\Wrapper\openssl_1_0_2
+set OPENSSL_LIB=%OPENSSL_DIR%\static\lib\libeay32.lib
+set OPENPACE_SRC_DIR=%BASE_DIR%\Wrapper\openpace\src
+set NFC_DIR=%BASE_DIR%\Wrapper\wrapper\nfc_access
+set DEST_DIR=%BASE_DIR%\lib
+
+echo.
 
 echo OPENSSL_DIR      : %OPENSSL_DIR%
 echo OPENSSL_LIB      : %OPENSSL_LIB%
 echo OPENPACE_SRC_DIR : %OPENPACE_SRC_DIR%
 echo NFC_DIR          : %NFC_DIR%
 echo DEST_DIR         : %DEST_DIR%
+
+echo.
 
 
 cl /LD /MD ^
@@ -87,15 +109,5 @@ if not exist "%DEST_DIR%\" (
 copy /Y openpace_wrapper.dll "%DEST_DIR%\"
 
 echo DLL copiada a %DEST_DIR%
-
-
-
-
-
-
-
-
-
-
-
-
+echo.
+echo.

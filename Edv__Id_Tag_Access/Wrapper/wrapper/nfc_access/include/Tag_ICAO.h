@@ -4,7 +4,6 @@
 #include <generictypedefs.h>
 #include <BioDefs.h>
 
-
 #define ICAO_READ_CHUNK	215
 
 #define ICAO_AUTH_BUG_RETRY	3
@@ -75,12 +74,11 @@ typedef struct ststSolemBioPtr{
 	void 	*pLogger;
 	int		lReturn;
 	int 	lError;
-	void 	*hSolemICAO;
-	void 	*hSCL;
+	void*	hSolemICAO;
+	void*	hSCL;
 	void 	**vpDeviceHandler;
 	
 	//stSolemICAOPtr			*opSICAO:
-
 
 }stSolemBio, *stSolemBioPtr;
 

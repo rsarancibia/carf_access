@@ -10,20 +10,20 @@ namespace Edv__Id_Tag_Access.Cedula
     internal class Cedula_IO
     {
 
-        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Test_Reader();
+        //[DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        //public static extern int Test_Reader();
 
-        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void Register_TxRx_Callback(TxRxCallback cb);
+        //[DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        //public static extern void Register_TxRx_Callback(TxRxCallback cb);
 
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate int TxRxCallback(
-            IntPtr tx,
-            int txLen,
-            IntPtr rx,
-            ref int rxLen
-        );
+        //[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        //public delegate int TxRxCallback(
+        //    IntPtr tx,
+        //    int txLen,
+        //    IntPtr rx,
+        //    ref int rxLen
+        //);
         /// <summary>
         /// ///////////////////////////////////////////
         /// </summary>
@@ -54,7 +54,7 @@ namespace Edv__Id_Tag_Access.Cedula
         private const string cTIPO_CEDULA_OLD = "Antigua";
 
 
-        private static TxRxCallback? _callbackRef;
+        //private static TxRxCallback? _callbackRef;
 
 
         private byte[] APDU_HEADER__SELECT_APP = { 0x00, 0xA4, 0x04, 0x0C };
@@ -132,8 +132,8 @@ namespace Edv__Id_Tag_Access.Cedula
             glb_IO_Delegate = ioFunc;
             glb_Tag_Type = tag_type;
 
-            _callbackRef = MyTxRx;
-            Register_TxRx_Callback(_callbackRef);
+            //_callbackRef = MyTxRx;
+            //Register_TxRx_Callback(_callbackRef);
 
             Register_TxRxNfc_Callback(TransmitRecieve);
 
@@ -141,7 +141,7 @@ namespace Edv__Id_Tag_Access.Cedula
 
         }
 
-        private void TransmitRecieve(IntPtr dummy,
+        private void TransmitRecieve(   IntPtr dummy,
                                         IntPtr tx,
                                         int txLen,
                                         IntPtr rx,
@@ -158,98 +158,113 @@ namespace Edv__Id_Tag_Access.Cedula
 
             glb_IO_Delegate(managedTx, txLen, received, ref total_received, ref sw1asw2);
 
-            // 🔹 Copiar respuesta hacia rx (memoria no administrada)
+
+            byte[] baSw = new byte[2];
+            baSw[0] = (byte)(sw1asw2 >> 8);   // MSB
+            baSw[1] = (byte)(sw1asw2 & 0xFF); // LSB
+
+            rxLen = 2 + total_received;
+            
             if (total_received > 0)
-            {
-                Marshal.Copy(received, 0, rx, total_received);
-                rxLen = total_received;
-            }
-            else
-            {
-                rxLen = 0;
-            }
+            Marshal.Copy(received, 0, rx, total_received);
+            
+            
+            Marshal.Copy(baSw, 0, rx + total_received, 2);
+
+
+
+            //// 🔹 Copiar respuesta hacia rx (memoria no administrada)
+            //if (total_received > 0)
+            //{
+            //    Marshal.Copy(received, 0, rx, total_received);
+            //    rxLen = total_received;
+            //}
+            //else
+            //{
+            //    rxLen = 0;
+            //}
         }
 
-        private int MyTxRx(IntPtr tx, int txLen, IntPtr rx, ref int rxLen)
-        {
-            // Copiar TX desde puntero nativo → array .NET
-            byte[] managedTx = new byte[txLen];
-            Marshal.Copy(tx, managedTx, 0, txLen);
+        //private int MyTxRx(IntPtr tx, int txLen, IntPtr rx, ref int rxLen)
+        //{
+        //    // Copiar TX desde puntero nativo → array .NET
+        //    byte[] managedTx = new byte[txLen];
+        //    Marshal.Copy(tx, managedTx, 0, txLen);
 
-            Log.Logger.HexDump(managedTx, data_lenght: managedTx.Length, message: "APDU a enviar");
+        //    Log.Logger.HexDump(managedTx, data_lenght: managedTx.Length, message: "APDU a enviar");
 
-            //// Simular respuesta
-            //byte[] response = new byte[] { 0x90, 0x00 };
+        //    //// Simular respuesta
+        //    //byte[] response = new byte[] { 0x90, 0x00 };
 
-            //// Copiar respuesta hacia buffer nativo
-            //Marshal.Copy(response, 0, rx, response.Length); 
-            //rxLen = response.Length;
-
-
-            glb_Detect_Card_Delegate();
-
-            if (glb_IO_Delegate is not null)
-            {
-                Log.Information("PASO 2");
-
-                glb_IO_Delegate(managedTx, managedTx.Length, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2); 
-
-                if (glb_Sw1Sw2 == APDU_ANS_OK)
-                {
-                    //Set_Tag_Type__New();
-                }
-            }
+        //    //// Copiar respuesta hacia buffer nativo
+        //    //Marshal.Copy(response, 0, rx, response.Length); 
+        //    //rxLen = response.Length;
 
 
-            return 1;
-        }
+        //    glb_Detect_Card_Delegate();
+
+        //    if (glb_IO_Delegate is not null)
+        //    {
+        //        Log.Information("PASO 2");
+
+        //        glb_IO_Delegate(managedTx, managedTx.Length, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2); 
+
+        //        if (glb_Sw1Sw2 == APDU_ANS_OK)
+        //        {
+        //            //Set_Tag_Type__New();
+        //        }
+        //    }
 
 
-        private int MyTxRx_old(byte[] tx, int txLen, byte[] rx, ref int rxLen) 
-        {
-            Log.Information("PASO 1A -> " + txLen.ToString());
-            Log.Information("PASO 1B -> " + tx[0].ToString());
-            Log.Information("PASO 1C -> " + tx[1].ToString());
+        //    return 1;
+        //}
 
 
-            //Log.Logger.HexDump(tx, data_lenght: txLen, message: "APDU a enviar");
-
-            return 0;
-
-
-            glb_Detect_Card_Delegate();
-
-            if (glb_IO_Delegate is not null)
-            {
-                Log.Information("PASO 2");
-
-                glb_IO_Delegate(tx, txLen, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2);  
-
-                if (glb_Sw1Sw2 == APDU_ANS_OK)
-                {
-                    //Set_Tag_Type__New();
-                }
-            }
-
-            return -1;
+        //private int MyTxRx_old(byte[] tx, int txLen, byte[] rx, ref int rxLen) 
+        //{
+        //    Log.Information("PASO 1A -> " + txLen.ToString());
+        //    Log.Information("PASO 1B -> " + tx[0].ToString());
+        //    Log.Information("PASO 1C -> " + tx[1].ToString());
 
 
-            //Console.WriteLine("TX:");
-            //for (int i = 0; i < txLen; i++)
-            //    Console.Write($"{tx[i]:X2} ");
-            //Console.WriteLine();
+        //    //Log.Logger.HexDump(tx, data_lenght: txLen, message: "APDU a enviar");
 
-            //// Simulación respuesta (ejemplo)
-            //byte[] response = new byte[] { 0x90, 0x00 };
+        //    return 0;
 
-            //if (rx.Length < response.Length)
-            //    return -1;
 
-            //Array.Copy(response, rx, response.Length);
-            //rxLen = response.Length;
+        //    glb_Detect_Card_Delegate();
 
-            //return 1;
-        }
+        //    if (glb_IO_Delegate is not null)
+        //    {
+        //        Log.Information("PASO 2");
+
+        //        glb_IO_Delegate(tx, txLen, glb_RcvData, ref glb_RcvData_Total_Bytes, ref glb_Sw1Sw2);  
+
+        //        if (glb_Sw1Sw2 == APDU_ANS_OK)
+        //        {
+        //            //Set_Tag_Type__New();
+        //        }
+        //    }
+
+        //    return -1;
+
+
+        //    //Console.WriteLine("TX:");
+        //    //for (int i = 0; i < txLen; i++)
+        //    //    Console.Write($"{tx[i]:X2} ");
+        //    //Console.WriteLine();
+
+        //    //// Simulación respuesta (ejemplo)
+        //    //byte[] response = new byte[] { 0x90, 0x00 };
+
+        //    //if (rx.Length < response.Length)
+        //    //    return -1;
+
+        //    //Array.Copy(response, rx, response.Length);
+        //    //rxLen = response.Length;
+
+        //    //return 1;
+        //}
 
 
         public int MOC()

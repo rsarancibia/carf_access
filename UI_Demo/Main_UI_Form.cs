@@ -3,22 +3,23 @@ using SixLabors.ImageSharp.ColorSpaces;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
 using System.Text;
+//using Serilog;
 
 namespace UI_Demo
 {
     public partial class Main_UI_Form : Form
     {
-        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void Register_Log_callback(Log_Callback cb);
+        //[DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        //public static extern void Register_Log_callback(Log_Callback cb);
 
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)] 
-        public delegate void Log_Callback(
-            IntPtr infoBuffer,
-            int infoBufferLen
-        );
+        //[UnmanagedFunctionPointer(CallingConvention.Cdecl)] 
+        //public delegate void Log_Callback(
+        //    IntPtr infoBuffer,
+        //    int infoBufferLen
+        //);
 
-        private static Log_Callback? _Log_Callback_Ref;
+        //private static Log_Callback? _Log_Callback_Ref;
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +45,9 @@ namespace UI_Demo
             string s = Encoding.UTF8.GetString(managedTx);
 
             richTB_Log.AppendText(s + "\n");
+
+            //Log.Information(s);
+
         }
 
 
@@ -52,8 +56,8 @@ namespace UI_Demo
         {
             LogViewer.Attach(richTB_Log);
 
-            _Log_Callback_Ref = Log_Fnc;
-            Register_Log_callback(_Log_Callback_Ref);
+            //_Log_Callback_Ref = Log_Fnc;
+            //Register_Log_callback(_Log_Callback_Ref);
 
 
             lblTipo_Cedula.Text = cTIPO_CEDULA;
@@ -83,8 +87,8 @@ namespace UI_Demo
                 Bitmap bmp = Helper.RawToBitmap(img_raw_buffer, image_width, image_height);
                 pbDisplay.Image = bmp;
 
-                byte[] iso_image = Array.Empty<byte>();
-                glb_EdvLibAPi?.Finger__Get_Iso_19794_2(img_raw_buffer, (ushort)image_width, (ushort)image_height, (ushort)dpi, ref iso_image);
+                //byte[] iso_image = Array.Empty<byte>();
+                //glb_EdvLibAPi?.Finger__Get_Iso_19794_2(img_raw_buffer, (ushort)image_width, (ushort)image_height, (ushort)dpi, ref iso_image);
 
             }
         }

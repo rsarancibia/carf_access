@@ -1962,6 +1962,9 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - IN");
 
+	
+
+
 	BIO* bio = NULL;
 	PACE_SEC* secret = NULL;
 	BUF_MEM* enc_nonce = NULL, * pcd_mapping_data = NULL,
@@ -2002,6 +2005,8 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		aApduData[14] = 0x00;
 		aApduData[15] = 0x01;
 		iApduResponseLen = sizeof(aApduResponse);
+
+
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
 		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
 		{
@@ -2009,6 +2014,7 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in New Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
+
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
 			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR_RESP;
@@ -2185,6 +2191,7 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 	{
 		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	}
+
 	if (ucSw1 != 0x90 || ucSw2 != 0x00)
 	{
 		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
@@ -2281,12 +2288,27 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 	{
 		// PACE
 
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
+
 		//	Update ICAO key
-		if (udateICAOkey(opSICAO) != SOLEMICAO_ERROR_NO_ERROR)
-		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-			goto JMP_connectcard;
-		}
+		/////////////////////////////////////////////////////////////////////////
+		// RAFA RAFA RAFA RAFA
+		//if (udateICAOkey(opSICAO) != SOLEMICAO_ERROR_NO_ERROR)
+		//{
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		//	goto JMP_connectcard;
+		//}
+		/////////////////////////////////////////////////////////////////////////
+		// RAFA RAFA RAFA RAFA
+
+
+		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"POST Update ICAO key");
+		//return 0;
+
+
 
 #ifdef _DEBUG
 		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - IcaoKey [%s]", opSICAO->sICAOKey);
@@ -2780,11 +2802,16 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 	if (appICAO && iIsOld)
 	{
 		//	Update ICAO key
-		if (udateICAOkey(opSICAO) != SOLEMICAO_ERROR_NO_ERROR)
-		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-			goto JMP_connectcard;
-		}
+		///////////////////////////////////////////////////////////////////////
+		// RAFA RAFA RAFA 
+		//if (udateICAOkey(opSICAO) != SOLEMICAO_ERROR_NO_ERROR)
+		//{
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		//	goto JMP_connectcard; poto
+		//}
+		///////////////////////////////////////////////////////////////////////
+		// RAFA RAFA RAFA 
+
 
 		// cmd SELECT 0x00, 0xA4, 0x04, 0x0C
 		aApduHeader[0] = 0x00;
@@ -4495,16 +4522,29 @@ int				iTimeout = 10000;
 	pSBIO->lReturn = 0;
 	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
 
-	mutex_lock(opSICAO->oMutex);
 
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+	// mutex_lock(opSICAO->oMutex);
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+
+
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
 	//	Get and Check Device Handler
-	pTmpDev = pSBIO->vpDeviceHandler[iDeviceID];
-	if (pTmpDev == NULL)
-	{
-		pSBIO->lError = SOLEMICAO_ERROR_MOC_DEVICEHANDLE_NULL;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_matchOnCard;
-	}
+	//pTmpDev = pSBIO->vpDeviceHandler[iDeviceID];
+	//if (pTmpDev == NULL)
+	//{
+	//	pSBIO->lError = SOLEMICAO_ERROR_MOC_DEVICEHANDLE_NULL;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	goto JMP_matchOnCard;
+	//}
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+
+
+
 
 	if (iDeviceID == SOLEMBIO_DEVICE_BIOPIN)
 	{
@@ -4539,6 +4579,8 @@ int				iTimeout = 10000;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Finger Ref Invalid [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_matchOnCard;
 	}
+
+	
 	// Get Iso Compact Template for Matching
 	pSBIO->lReturn = sBioGetData(pSBIO, (enDataField)iFieldID, SOLEMBIO_DATAFIELDPROP_MINUTIAE_SOLISOC, aIsoCTemplate, &iIsoCTemplateLen);
 	if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
@@ -4547,6 +4589,7 @@ int				iTimeout = 10000;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Get IsoCompact Template [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_matchOnCard;
 	}
+
 	// Check presence and get SmartCard
 	//pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
 
@@ -4561,27 +4604,33 @@ int				iTimeout = 10000;
 	//PutInLog(pLogger, LOG_LEVEL_INFORMATIONAL, (char*)"SolemICAO - MOC - Using Test Template [%ld]", iIsoCTemplateLen);
 	//// TEST TEMPLATE - OUT
 	
-	lInitialTime = GetTickCount();
-	do
-	{
-		// Check presence and get SmartCard
-		pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
-		lActualTime = GetTickCount();
-	} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout);
-		
-	
-	if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
-	{
-		pSBIO->lError = SOLEMICAO_ERROR_NO_CARD_AVAILABLE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_matchOnCard;
-	}
-	else if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
-	{
-		pSBIO->lError = SOLEMICAO_ERROR_MOC_GETCARD;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_matchOnCard;
-	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+	//lInitialTime = GetTickCount();
+	//do
+	//{
+	//	// Check presence and get SmartCard
+	//	pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
+	//	lActualTime = GetTickCount();
+	//} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout);
+
+	//if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
+	//{
+	//	pSBIO->lError = SOLEMICAO_ERROR_NO_CARD_AVAILABLE;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	goto JMP_matchOnCard;
+	//}
+	//else if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
+	//{
+	//	pSBIO->lError = SOLEMICAO_ERROR_MOC_GETCARD;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	goto JMP_matchOnCard;
+	//}
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+
+
 
 	while(iPinNotFoundBugRetryCount < 3)
 	{
@@ -4714,6 +4763,7 @@ int				iTimeout = 10000;
 				}
 			}
 
+
 			// Try new document
 			//
 			memset(aApduHeader, 0, sizeof(aApduHeader));
@@ -4776,6 +4826,7 @@ int				iTimeout = 10000;
 			iApduResponseLen = sizeof(aApduResponse);
 
 			iApduResponseLen = sizeof(aApduResponse);
+
 			pSBIO->lReturn = transmitSecureApdu(opSICAO, pTmpDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
 			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
 			{
@@ -4784,6 +4835,12 @@ int				iTimeout = 10000;
 				continue;
 				//goto JMP_matchOnCard;
 			}
+
+
+			//PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"POST TX iIsoCTemplateLen -> %d / 0x%02X%02X", iIsoCTemplateLen, ucSw1, ucSw2);
+			//return;
+
+
 		}
 
 		
@@ -4878,16 +4935,25 @@ JMP_matchOnCard:
 	
 	lTmpError = pSBIO->lError;
 
-	pSBIO->lReturn = opSICAO->fn_Disconnect(pTmpDev);
-	if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
-	{
-		pSBIO->lError = SOLEMICAO_ERROR_MOC_DISCONNECT;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Disconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-	}
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+	//pSBIO->lReturn = opSICAO->fn_Disconnect(pTmpDev);
+	//if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
+	//{
+	//	pSBIO->lError = SOLEMICAO_ERROR_MOC_DISCONNECT;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Disconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//}
+	///////////////////////////////////////////////////////////////////////////
+// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+
 
 	pSBIO->lError = lTmpError;
 
-	mutex_unlock(opSICAO->oMutex);
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
+	// mutex_unlock(opSICAO->oMutex);
+	///////////////////////////////////////////////////////////////////////////
+	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
 
 	return pSBIO->lError;
 }

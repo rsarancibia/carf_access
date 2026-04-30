@@ -1,8 +1,11 @@
 #include <utils.h>
 #include <Tag_ICAO.h>
+#include <BIoGetData.h>
 #include <string.h>
 
-stSolemBio	g_SBIO;
+static stSolemBio   g_SBIO;
+static TRANSMIT     g_TxRxNfc = NULL;
+
 
 
 __declspec(dllexport)
@@ -14,30 +17,63 @@ int Edv_Init()
 }
 
 
+
 //typedef int(__cdecl* GETCARD)		(IN void* pDev);
 //typedef int(__cdecl* TRANSMIT)		(IN void* pDev, IN unsigned char* ucpApduCmd, IN long lApduCmdLen, OUT unsigned char* ucpApduRsp, IN OUT long* lpApduRspLen);
 //typedef int(__cdecl* DISCONNECT)	(IN void* pDev);
 
-
-
-
-//typedef int (*TxRxNfc_Callback)(
-//    void* handle,
-//    unsigned char* tx,
-//    int txLen,
-//    unsigned char* rx,
-//    int* rxLen
-//    );
-
-static TRANSMIT g_TxRxNfc = NULL;
-
-
 //
 // Insert Callback
 //
-
 __declspec(dllexport)
 void Register_TxRxNfc_Callback(TRANSMIT cb)
 {
+    stSolemICAO* pSolemICAO = (stSolemICAO*)g_SBIO.hSolemICAO;
+    
     g_TxRxNfc = cb;
+
+    pSolemICAO->fn_Transmit = cb;
+
+
+
+
+
+    //g_SBIO.hSolemICAO->fn_GetCard = cb;
+
+    //GETCARD		fn_GetCard;
+    //TRANSMIT	fn_Transmit;
+    //DISCONNECT	fn_Disconnect;
+}
+
+__declspec(dllexport)
+int Edv_Moc()
+{
+    stSolemICAO* pSolemICAO = (stSolemICAO*)g_SBIO.hSolemICAO;
+    int match = 100;
+    int status;
+
+    //string qr_rafa = "https://portal.sidiv.registrocivil.cl/docstatus?RUN=12845657-0&type=CEDULA&serial=B5F089055&mrz=B5F089055075040793504071&name=RAFAEL%20SEBASTI%C1N%20%20ARANCIBIA%20AMPUERO";
+
+    char data_rafa[] = "B5F089055075040793504071";
+
+    memcpy((void *)(pSolemICAO->sICAOKey), (void *)data_rafa, sizeof(data_rafa));
+
+    //long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
+    //int SolemICAOMOC(stSolemICAOPtr opSICAO, int iDeviceID, int iFingerRef, int iFieldID, int* ipMatchResult)
+
+
+    //return (int)ConnectCard(g_SBIO.hSolemICAO, NULL, 1);
+
+    status = SolemICAOMOC(g_SBIO.hSolemICAO, 0, 1, 0, &match);
+
+    PutInLog(NULL, LOG_LEVEL_NOTICE, (char*)"MOC RESUUUUUUUUUUULTS : %d\r\n", match);
+
+    return status;
+
+}
+
+__declspec(dllexport)
+void Edv_Set_Template(unsigned char* template, int template_len)
+{
+    sBioSetTemplate(template, template_len);
 }
