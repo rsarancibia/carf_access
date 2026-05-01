@@ -1,4 +1,4 @@
-namespace UI_Demo_OnlyMoc
+namespace LicenseGenerator
 {
     internal static class Program
     {

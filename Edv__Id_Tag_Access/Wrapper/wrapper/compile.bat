@@ -17,7 +17,7 @@ REM copy /Y openpace_wrapper.dll "%DEST_DIR%"
 REM copy /Y openpace_wrapper.lib "%DEST_DIR%"
 
 
-set home=0
+set home=1
 
 if "%home%"=="1" (
 
@@ -75,6 +75,7 @@ openpace_wrapper.c ^
 %NFC_DIR%\all_smart_card.c ^
 %NFC_DIR%\EdvBio_Wrapper.c ^
 %SECURE_DIR%\secure_tools.c ^
+%SECURE_DIR%\CypherDechypher.c ^
 %OPENPACE_SRC_DIR%\iob_fix.c ^
 %OPENPACE_SRC_DIR%\libeacMT.lib ^
 %OPENSSL_LIB% ^

@@ -7,6 +7,35 @@
 //#include <stdio.h>
 
 
+
+
+//🔐 Tamaño de salida(esto es lo importante)
+//
+//Si tu clave es :
+//
+//2048 bits → 256 bytes
+//3072 bits → 384 bytes
+//4096 bits → 512 bytes
+//
+//👉 Entonces :
+//
+//Firma RSA = tamaño fijo = tamaño de la clave
+
+//🔍 Ejemplo real
+//
+//Con una clave de 2048 bits:
+//
+//data(cualquier tamaño)
+//→ SHA256(interno)
+//→ firma RSA
+//
+//resultado = 256 bytes
+//
+//👉 da lo mismo si DATA1 tiene 10 bytes o 10 KB
+//👉 la firma será siempre 256 bytes
+
+
+
 #pragma comment(lib, "winhttp.lib")
 
 
@@ -328,3 +357,5 @@ int ValidateLicenseString(const char* license_b64)
 
     return LICENSE_OK;
 }
+
+

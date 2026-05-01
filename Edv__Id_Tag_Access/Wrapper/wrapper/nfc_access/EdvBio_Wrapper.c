@@ -85,6 +85,9 @@ void Edv_Test_Licencia(void)
     int status;
     char Buffer[1024]; 
 
+    test_rsa_sign_verify();
+
+
     status = get_http_date(Buffer, sizeof(Buffer));
 
     if(status == 0)

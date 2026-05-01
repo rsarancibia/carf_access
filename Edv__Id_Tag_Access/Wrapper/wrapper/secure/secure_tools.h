@@ -7,7 +7,7 @@
 #include <time.h>
 #include <string.h>
 #include <stdio.h>
-
+#include <CypherDechypher.h>
 
 
 typedef struct

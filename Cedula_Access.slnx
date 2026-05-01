@@ -6,6 +6,7 @@
   <Project Path="Edv__Id_Tag_Access/Edv__Id_Tag_Access.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
+  <Project Path="LicenseGenerator/LicenseGenerator.csproj" Id="890fa507-9b6a-4a1b-bd95-e66525e49f87" />
   <Project Path="UI_Demo/UI_Demo.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
