@@ -46,7 +46,7 @@ void Register_TxRxNfc_Callback(TRANSMIT cb)
 }
 
 __declspec(dllexport)
-int Edv_Moc()
+int Edv_Moc(unsigned char* docNum, unsigned char* DoB, unsigned char*  DoE)
 {
     stSolemICAO* pSolemICAO = (stSolemICAO*)g_SBIO.hSolemICAO;
     int match = 100;
@@ -66,7 +66,7 @@ int Edv_Moc()
 
     status = SolemICAOMOC(g_SBIO.hSolemICAO, 0, 1, 0, &match);
 
-    PutInLog(NULL, LOG_LEVEL_NOTICE, (char*)"MOC RESUUUUUUUUUUULTS : %d\r\n", match);
+    PutInLog(NULL, LOG_LEVEL_NOTICE, (char*)"MOC RESUUUUUUUUUUULTS : %d\r\n", match); 
 
     return status;
 

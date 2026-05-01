@@ -34,7 +34,6 @@
 
 	<ItemGroup>
 	  <Folder Include="Bac\" />
-	  <Folder Include="Wrapper\" />
 	</ItemGroup>
 
 

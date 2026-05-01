@@ -46,6 +46,7 @@ set OPENSSL_DIR=%BASE_DIR%\Wrapper\openssl_1_0_2
 set OPENSSL_LIB=%OPENSSL_DIR%\static\lib\libeay32.lib
 set OPENPACE_SRC_DIR=%BASE_DIR%\Wrapper\openpace\src
 set NFC_DIR=%BASE_DIR%\Wrapper\wrapper\nfc_access
+set SECURE_DIR=%BASE_DIR%\Wrapper\wrapper\secure
 set DEST_DIR=%BASE_DIR%\lib
 
 echo.
@@ -65,6 +66,7 @@ cl /LD /MD ^
 /I .\eac ^
 /I %OPENPACE_SRC_DIR% ^
 /I %NFC_DIR%\include ^
+/I %SECURE_DIR% ^
 openpace_wrapper.c ^
 %NFC_DIR%\utils.c ^
 %NFC_DIR%\coder.c ^
@@ -72,6 +74,7 @@ openpace_wrapper.c ^
 %NFC_DIR%\Tag_ICAO.c ^
 %NFC_DIR%\all_smart_card.c ^
 %NFC_DIR%\EdvBio_Wrapper.c ^
+%SECURE_DIR%\secure_tools.c ^
 %OPENPACE_SRC_DIR%\iob_fix.c ^
 %OPENPACE_SRC_DIR%\libeacMT.lib ^
 %OPENSSL_LIB% ^

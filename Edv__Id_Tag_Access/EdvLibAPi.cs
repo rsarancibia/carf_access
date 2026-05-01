@@ -39,7 +39,8 @@ namespace Edv__Id_Tag_Access
 
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Edv_Moc();
+        public static extern int Edv_Moc(byte[] docNum, byte[] DoB, byte[] DoE);
+
 
         private const string cREADER_NAME = "HID Global OMNIKEY 5022 Smart Card Reader 0"; 
 
@@ -133,13 +134,12 @@ namespace Edv__Id_Tag_Access
 
                 glb_Nfc_Reader?.Detect_Card();
 
-                Edv_Moc();
-
+                Edv_Moc(Cedula_Info.baNumeroDocumento, Cedula_Info.baFechaNacimiento, Cedula_Info.baFechaExpiracion);
             }
         }
 
 
-        public int Id_Tag__MOC()
+        public int Id_Tag__MOC() 
         {
             int status = 0;
 
