@@ -2,7 +2,7 @@
 #include <Tag_ICAO.h>
 #include <BIoGetData.h>
 #include <string.h>
-
+#include <secure_tools.h>
 static stSolemBio   g_SBIO;
 static TRANSMIT     g_TxRxNfc = NULL;
 
@@ -77,3 +77,42 @@ void Edv_Set_Template(unsigned char* template, int template_len)
 {
     sBioSetTemplate(template, template_len);
 }
+
+
+__declspec(dllexport)
+void Edv_Test_Licencia(void)
+{
+    int status;
+    char Buffer[1024]; 
+
+    status = get_http_date(Buffer, sizeof(Buffer));
+
+    if(status == 0)
+    {
+        PutInLog(NULL, LOG_LEVEL_NOTICE, "ERROR captura de Time from Inet : %d", status);
+    }
+    else
+    {
+        DisplayHex(0, Buffer, 128);
+    }
+
+    /*
+    
+    Si devuelve 0, puedes saber por qué falló con:
+    DWORD err = GetLastError();
+    
+    
+    Ejemplos típicos:
+
+    ERROR_WINHTTP_HEADER_NOT_FOUND
+    ERROR_WINHTTP_INSUFFICIENT_BUFFER
+    ERROR_WINHTTP_INVALID_HEADER
+    
+    */
+
+
+
+
+}
+
+

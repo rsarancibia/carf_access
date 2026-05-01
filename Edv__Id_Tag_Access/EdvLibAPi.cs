@@ -15,6 +15,9 @@ namespace Edv__Id_Tag_Access
     public class EdvLibAPi
     {
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void Edv_Test_Licencia();
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr PACE_CreateSecret(byte[] secret, int len);
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -60,13 +63,19 @@ namespace Edv__Id_Tag_Access
             int status = 0;
             int res = 0;
 
+ 
             while (true)
             {
                 LoggerConfig.Init();
 
                 Register_Log_callback(Log_Fnc);
 
-                Log.Information("DLL Init - Start"); 
+                Log.Information("DLL Init - Start");
+
+                Edv_Test_Licencia();
+                return 0;
+
+
 
                 //Test();
 

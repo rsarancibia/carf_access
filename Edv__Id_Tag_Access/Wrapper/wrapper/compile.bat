@@ -17,7 +17,7 @@ REM copy /Y openpace_wrapper.dll "%DEST_DIR%"
 REM copy /Y openpace_wrapper.lib "%DEST_DIR%"
 
 
-set home=1
+set home=0
 
 if "%home%"=="1" (
 
