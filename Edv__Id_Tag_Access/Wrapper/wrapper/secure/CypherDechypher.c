@@ -3,8 +3,14 @@
 #include <CypherDechypher.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <openssl/bio.h>
 #include <string.h>
 #include <stdio.h>
+
+
+EVP_PKEY* load_public_key_from_string(const char* pubkey_pem);
+EVP_PKEY* load_private_key_from_string(const char* privkey_pem);
+
 
 
 /// <summary>
@@ -237,4 +243,120 @@ cleanup:
     if (bio_pub) BIO_free(bio_pub);
 
     return ok;
+}
+
+
+
+
+
+int rsa_encrypt(const unsigned char* plaintext, size_t plaintext_len,
+    unsigned char* ciphertext, size_t* ciphertext_len,
+    const char* pubkey_string)
+{
+    //FILE* fp = fopen(pubkey_path, "r");
+    //if (!fp) return -1;
+
+    //EVP_PKEY* pubkey = PEM_read_PUBKEY(fp, NULL, NULL, NULL);
+    //fclose(fp);
+    //if (!pubkey) return -2;
+
+    EVP_PKEY* pubkey = load_public_key_from_string(pubkey_string);
+    if (!pubkey) return -2;
+
+
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(pubkey, NULL);
+    if (!ctx) return -3;
+
+    if (EVP_PKEY_encrypt_init(ctx) <= 0) return -4;
+
+    // Usar OAEP (recomendado)
+    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING);
+
+    // Primero obtener tamaño
+    if (EVP_PKEY_encrypt(ctx, NULL, ciphertext_len, plaintext, plaintext_len) <= 0)
+        return -5;
+
+    // Luego encriptar
+    if (EVP_PKEY_encrypt(ctx, ciphertext, ciphertext_len, plaintext, plaintext_len) <= 0)
+        return -6;
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(pubkey);
+
+    return 0;
+}
+
+
+int rsa_decrypt(const unsigned char* ciphertext, size_t ciphertext_len,
+    unsigned char* plaintext, size_t* plaintext_len,
+    const char* privkey_path)
+{
+    //FILE* fp = fopen(privkey_path, "r");
+    //if (!fp) return -1;
+
+    //EVP_PKEY* privkey = PEM_read_PrivateKey(fp, NULL, NULL, NULL);
+    //fclose(fp);
+    //if (!privkey) return -2;
+
+    EVP_PKEY* privkey = load_private_key_from_string(privkey_path);
+    if (!privkey) return -2;
+
+
+
+    EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(privkey, NULL);
+    if (!ctx) return -3;
+
+    if (EVP_PKEY_decrypt_init(ctx) <= 0) return -4;
+
+    EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING);
+
+    // Obtener tamaño
+    if (EVP_PKEY_decrypt(ctx, NULL, plaintext_len, ciphertext, ciphertext_len) <= 0)
+        return -5;
+
+    // Desencriptar
+    if (EVP_PKEY_decrypt(ctx, plaintext, plaintext_len, ciphertext, ciphertext_len) <= 0)
+        return -6;
+
+    EVP_PKEY_CTX_free(ctx);
+    EVP_PKEY_free(privkey);
+
+    return 0;
+}
+
+
+
+EVP_PKEY* load_public_key_from_string(const char* pubkey_pem)
+{
+    BIO* bio = NULL;
+    EVP_PKEY* pkey = NULL;
+
+    // Crear BIO desde memoria
+    bio = BIO_new_mem_buf(pubkey_pem, -1);
+    if (!bio) return NULL;
+
+    // Leer clave pública
+    pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+
+    BIO_free(bio);
+
+    return pkey; // NULL si falla
+}
+
+
+EVP_PKEY* load_private_key_from_string(const char* privkey_pem)
+{
+    BIO* bio = NULL;
+    EVP_PKEY* pkey = NULL;
+
+    bio = BIO_new_mem_buf((void*)privkey_pem, -1);
+    if (bio == NULL)
+        return NULL;
+
+    pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+
+    BIO_free(bio);
+
+    return pkey;
+
 }

@@ -4,5 +4,12 @@
 
 int test_rsa_sign_verify();
 
+int rsa_encrypt(const unsigned char* plaintext, size_t plaintext_len,
+    unsigned char* ciphertext, size_t* ciphertext_len,
+    const char* pubkey_string);
+
+int rsa_decrypt(const unsigned char* ciphertext, size_t ciphertext_len,
+    unsigned char* plaintext, size_t* plaintext_len,
+    const char* privkey_path);
 
 #endif

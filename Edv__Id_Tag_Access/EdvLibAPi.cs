@@ -93,6 +93,10 @@ namespace Edv__Id_Tag_Access
                 byte[] lic  = new byte[128];
                 int lic_len = lic.Length;
 
+                Edv_Licencia_Get_Client_Info(lic, ref lic_len);
+                Edv_Licencia_Get_Client_Info(lic, ref lic_len);
+
+
                 if (Edv_Licencia_Get_Client_Info(lic, ref lic_len) == 0)
                 {
                     Log.Logger.HexDump(lic, data_lenght: lic_len, message: "Licencia Info Raw Data");
