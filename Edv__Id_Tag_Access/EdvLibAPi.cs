@@ -58,6 +58,14 @@ namespace Edv__Id_Tag_Access
         private api_Tag_Type? glb_api_Tag_Type = null;
 
 
+        public string Get_Info_Id()
+        {
+
+            return "Rana";
+        
+        }
+
+
         public int Init(api_Tag_Type tag_type)
         {
             int status = 0;

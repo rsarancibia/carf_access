@@ -18,7 +18,9 @@ namespace LicenseGenerator
 
         private void bnLicense_Generate_Click(object sender, EventArgs e)
         {
-           
+            LicenseData.Data oData = new();
+            oData.User__Set("Hola");
+        
         }
 
         private void btn_Select_Private_Key_File_Click(object sender, EventArgs e)
