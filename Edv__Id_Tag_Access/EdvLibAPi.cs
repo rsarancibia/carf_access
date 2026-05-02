@@ -7,6 +7,7 @@ using Edv__Id_Tag_Access.Pace;
 using Serilog;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using static System.Formats.Asn1.AsnWriter;
 
@@ -27,6 +28,9 @@ namespace Edv__Id_Tag_Access
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void Register_Log_callback(Log_Callback cb);
 
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Licencia_Get_Client_Info(byte[] clientInfo, ref int infoLen);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void Log_Callback(
@@ -71,7 +75,13 @@ namespace Edv__Id_Tag_Access
             int status = 0;
             int res = 0;
 
- 
+            string test = "178BFBFF00A70F80|0C115F12";
+            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(test));
+            string b64 = Convert.ToBase64String(hash);
+
+
+
+
             while (true)
             {
                 LoggerConfig.Init();
@@ -80,7 +90,22 @@ namespace Edv__Id_Tag_Access
 
                 Log.Information("DLL Init - Start");
 
-                Edv_Test_Licencia();
+                byte[] lic  = new byte[128];
+                int lic_len = lic.Length;
+
+                if (Edv_Licencia_Get_Client_Info(lic, ref lic_len) == 0)
+                {
+                    Log.Logger.HexDump(lic, data_lenght: lic_len, message: "Licencia Info Raw Data");
+
+                    Log.Information("Calculado : " + b64);
+
+                }
+                else
+                {
+                    Log.Error("ERROR AL OBTENER DATOS DE CLIENTE");
+                }
+                
+                //Edv_Test_Licencia();
                 return 0;
 
 

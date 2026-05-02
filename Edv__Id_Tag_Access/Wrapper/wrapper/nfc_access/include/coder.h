@@ -1,5 +1,5 @@
-#ifndef SOLEM_CODER_H
-#define SOLEM_CODER_H
+#ifndef __CODER_H__
+#define __CODER_H__
 
 #include <errno.h>
 #include <string.h>
@@ -120,4 +120,4 @@ extern int 					Base32Encode(unsigned char* ucpData, unsigned long ulSizeData, c
 extern int 					Base64Decode(char* cpCode, unsigned char* ucpData, unsigned long* ulpSizeData);
 extern int 					Base64Encode(unsigned char* ucpData, unsigned long ulSizeData, char* cpCode, unsigned long* ulpSizeCode);
 
-#endif // SOLEM_CODER_H
+#endif // __CODER_H__

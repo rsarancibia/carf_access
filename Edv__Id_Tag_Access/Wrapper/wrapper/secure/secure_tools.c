@@ -155,10 +155,11 @@ time_t parse_http_date(const char* date_str)
 }
 
 
-
-#define LICENSE_OK 0
-#define LICENSE_EXPIRED 1
-#define LICENSE_ROLLBACK 2
+#define LICENSE_OK           0
+#define LICENSE_INVALID      1
+#define LICENSE_EXPIRED      2
+#define LICENSE_ROLLBACK     3
+#define LICENSE_NO_TIME      4
 
 int validate_license(const char* state_path, uint64_t expiry_time)
 {
@@ -205,11 +206,6 @@ int validate_license(const char* state_path, uint64_t expiry_time)
 //#include <stdint.h>
 //#include <string.h>
 //#include <time.h>
-
-#define LICENSE_OK           0
-#define LICENSE_INVALID      1
-#define LICENSE_EXPIRED      2
-#define LICENSE_NO_TIME      3
 
 // ============================
 // ESTRUCTURA INTERNA

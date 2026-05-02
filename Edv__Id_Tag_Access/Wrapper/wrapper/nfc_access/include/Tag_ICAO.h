@@ -32,29 +32,29 @@ typedef int	(__cdecl *DISCONNECT)	(IN void *pDev);
 
 enum
 {
-	SOLEMICAO_DATAGROUP_COM = 0,
-	SOLEMICAO_DATAGROUP_1,
-	SOLEMICAO_DATAGROUP_2,
-	SOLEMICAO_DATAGROUP_3,
-	SOLEMICAO_DATAGROUP_4,
-	SOLEMICAO_DATAGROUP_5,
-	SOLEMICAO_DATAGROUP_6,
-	SOLEMICAO_DATAGROUP_7,
-	SOLEMICAO_DATAGROUP_8,
-	SOLEMICAO_DATAGROUP_9,
-	SOLEMICAO_DATAGROUP_10,
-	SOLEMICAO_DATAGROUP_11,
-	SOLEMICAO_DATAGROUP_12,
-	SOLEMICAO_DATAGROUP_13,
-	SOLEMICAO_DATAGROUP_14,
-	SOLEMICAO_DATAGROUP_15,
-	SOLEMICAO_DATAGROUP_MAX,
+	ICAO_DATAGROUP_COM = 0,
+	ICAO_DATAGROUP_1,
+	ICAO_DATAGROUP_2,
+	ICAO_DATAGROUP_3,
+	ICAO_DATAGROUP_4,
+	ICAO_DATAGROUP_5,
+	ICAO_DATAGROUP_6,
+	ICAO_DATAGROUP_7,
+	ICAO_DATAGROUP_8,
+	ICAO_DATAGROUP_9,
+	ICAO_DATAGROUP_10,
+	ICAO_DATAGROUP_11,
+	ICAO_DATAGROUP_12,
+	ICAO_DATAGROUP_13,
+	ICAO_DATAGROUP_14,
+	ICAO_DATAGROUP_15,
+	ICAO_DATAGROUP_MAX,
 };
 
 
 /*
 
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 int					iTmpApduRspLen = 0;
 unsigned char		aApduMsg[255 + 6];
@@ -66,31 +66,30 @@ int					iApduResponseLen = 256 + 2;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 */
 
-#define SOLEMBIO_DATAFIELD_MAX 32 // !!!! ???????
+#define BIO_DATAFIELD_MAX 32 // !!!! ???????
 
 
-typedef struct ststSolemBioPtr{
+typedef struct ststHndBioPtr{
 
 	void 	*pLogger;
 	int		lReturn;
 	int 	lError;
-	void*	hSolemICAO;
+	void*	HndICAO;
 	void*	hSCL;
 	void 	**vpDeviceHandler;
 	
-	//stSolemICAOPtr			*opSICAO:
+	//sHndICAOPtr			*opSICAO:
 
-}stSolemBio, *stSolemBioPtr;
-
-
+}stHndBio, *stHndBioPtr;
 
 
-typedef struct ststSolemICAO{
+
+
+typedef struct ststHndICAO{
 	
-	stSolemBioPtr	pSBIO;
+	stHndBioPtr		pSBIO;
 
-	// SolemICAO Capture Fields
-	int				aCaptureField[SOLEMBIO_DATAFIELD_MAX];
+	int				aCaptureField[BIO_DATAFIELD_MAX];
 	int				aCaptureDG[16];
 	int				iGetICAO;
 	int				iGetFinger;
@@ -149,15 +148,15 @@ typedef struct ststSolemICAO{
 
 	int			iMutexFlag;
 
-}stSolemICAO, *stSolemICAOPtr;
+}stHndICAO, *sHndICAOPtr;
 
 
-int SolemICAOInit(stSolemBioPtr	opSBIO);
-void SolemICAOClean(stSolemICAOPtr opSICAO);
-int SolemICAOAddCaptureField(stSolemICAOPtr opSICAO, int iFieldID);
-int SolemICAOCleanCaptureFields(stSolemICAOPtr opSICAO);
-int SolemICAOCapture(stSolemICAOPtr opSICAO, int iDeviceID, int iTimeout);
-int SolemICAOMOC(stSolemICAOPtr opSICAO, int iDeviceID, int iFingerRef, int iFieldID, int *ipMatchResult);
+int ICAOInit(stHndBioPtr	opSBIO);
+void ICAOClean(sHndICAOPtr opSICAO);
+int ICAOAddCaptureField(sHndICAOPtr opSICAO, int iFieldID);
+int ICAOCleanCaptureFields(sHndICAOPtr opSICAO);
+int ICAOCapture(sHndICAOPtr opSICAO, int iDeviceID, int iTimeout);
+int ICAOMOC(sHndICAOPtr opSICAO, int iDeviceID, int iFingerRef, int iFieldID, int *ipMatchResult);
 
 #endif
 

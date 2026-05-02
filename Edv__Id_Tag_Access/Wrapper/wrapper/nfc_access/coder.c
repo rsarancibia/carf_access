@@ -632,6 +632,9 @@ int Base32Encode(unsigned char* ucpData, unsigned long ulSizeData, char* cpCode,
     return 0;
 }
 
+*/
+
+
 /////////////////////////////////////////////////////////////////////////
 //
 /////////////////////////////////////////////////////////////////////////
@@ -652,6 +655,9 @@ int Base64Decode(char* cpCode, unsigned char* ucpData, unsigned long* ulpSizeDat
     }
 
     lLenCode = strlen(cpCode);
+
+	PutInLog(NULL, 0, "Base64Decode : lLenCode : %lu\r\n", lLenCode);
+
     memset(ucpData, 0, *ulpSizeData);
     for (lPosition = 0, *ulpSizeData = 0; lPosition < lLenCode; lPosition += 4)
     {
@@ -756,5 +762,3 @@ int Base64Encode(unsigned char* ucpData, unsigned long ulSizeData, char* cpCode,
 
     return 0;
 }
-
-*/

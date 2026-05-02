@@ -3,24 +3,25 @@
 #include <BIoGetData.h>
 #include <string.h>
 #include <secure_tools.h>
-static stSolemBio   g_SBIO;
+#include <Client_Info.h>
+
+static stHndBio     g_SBIO;
 static TRANSMIT     g_TxRxNfc = NULL;
 
+//typedef int(__cdecl* GETCARD)		(IN void* pDev);
+static GETCARD      g_Card_Get = NULL;
+
+//typedef int(__cdecl* DISCONNECT)	(IN void* pDev);
+static DISCONNECT   g_Carf_Disconnect = NULL;
 
 
 __declspec(dllexport)
 int Edv_Init()
 {
-    memset((void *)&g_SBIO, 0, sizeof(stSolemBio));
+    memset((void *)&g_SBIO, 0, sizeof(stHndBio));
 
-    return SolemICAOInit(&g_SBIO);
+    return ICAOInit(&g_SBIO);
 }
-
-
-
-//typedef int(__cdecl* GETCARD)		(IN void* pDev);
-//typedef int(__cdecl* TRANSMIT)		(IN void* pDev, IN unsigned char* ucpApduCmd, IN long lApduCmdLen, OUT unsigned char* ucpApduRsp, IN OUT long* lpApduRspLen);
-//typedef int(__cdecl* DISCONNECT)	(IN void* pDev);
 
 //
 // Insert Callback
@@ -28,27 +29,17 @@ int Edv_Init()
 __declspec(dllexport)
 void Register_TxRxNfc_Callback(TRANSMIT cb)
 {
-    stSolemICAO* pSolemICAO = (stSolemICAO*)g_SBIO.hSolemICAO;
+    stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
     
     g_TxRxNfc = cb;
 
-    pSolemICAO->fn_Transmit = cb;
-
-
-
-
-
-    //g_SBIO.hSolemICAO->fn_GetCard = cb;
-
-    //GETCARD		fn_GetCard;
-    //TRANSMIT	fn_Transmit;
-    //DISCONNECT	fn_Disconnect;
+    pHndICAO->fn_Transmit = cb;
 }
 
 __declspec(dllexport)
-int Edv_Moc(unsigned char* docNum, unsigned char* DoB, unsigned char*  DoE)
+int Edv_Moc(unsigned char* docNum, unsigned char* DoB, unsigned char*  DoE) 
 {
-    stSolemICAO* pSolemICAO = (stSolemICAO*)g_SBIO.hSolemICAO;
+    stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
     int match = 100;
     int status;
 
@@ -56,15 +47,9 @@ int Edv_Moc(unsigned char* docNum, unsigned char* DoB, unsigned char*  DoE)
 
     char data_rafa[] = "B5F089055075040793504071";
 
-    memcpy((void *)(pSolemICAO->sICAOKey), (void *)data_rafa, sizeof(data_rafa));
+    memcpy((void *)(pHndICAO->sICAOKey), (void *)data_rafa, sizeof(data_rafa));
 
-    //long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
-    //int SolemICAOMOC(stSolemICAOPtr opSICAO, int iDeviceID, int iFingerRef, int iFieldID, int* ipMatchResult)
-
-
-    //return (int)ConnectCard(g_SBIO.hSolemICAO, NULL, 1);
-
-    status = SolemICAOMOC(g_SBIO.hSolemICAO, 0, 1, 0, &match);
+    status = ICAOMOC(g_SBIO.HndICAO, 0, 1, 0, &match);
 
     PutInLog(NULL, LOG_LEVEL_NOTICE, (char*)"MOC RESUUUUUUUUUUULTS : %d\r\n", match); 
 
@@ -77,6 +62,33 @@ void Edv_Set_Template(unsigned char* template, int template_len)
 {
     sBioSetTemplate(template, template_len);
 }
+
+__declspec(dllexport)
+int Edv_Licencia_Get_Client_Info(unsigned char *clientInfo, int *infoLen)
+{
+    int status = 0;
+    char hwid[256] = { 0 };
+ 
+    status = build_hwid(hwid);
+    
+    if (status == 0)
+    {
+        unsigned char hash[32];
+        SHA256((unsigned char*)hwid, strlen(hwid), hash);
+
+        unsigned char b64[64];
+        int b64_len = sizeof(b64);
+        Base64Encode(hash, sizeof(hash), b64, &b64_len);
+
+        *infoLen = b64_len;
+
+        memcpy((void*)clientInfo, (void*)b64, *infoLen);
+    }
+
+    return status;
+}
+
+
 
 
 __declspec(dllexport)
@@ -113,8 +125,13 @@ void Edv_Test_Licencia(void)
     
     */
 
+	char hwid[256] = { 0 };
+    
+    status = build_hwid(hwid);
+    
 
-
+    PutInLog(NULL, LOG_LEVEL_NOTICE, "HWID: %s", hwid);
+    DisplayHex(0, hwid, strlen(hwid));
 
 }
 

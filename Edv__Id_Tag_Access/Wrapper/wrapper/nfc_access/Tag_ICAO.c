@@ -1,16 +1,6 @@
 #include <string.h>
 #include <stdio.h>
-
 #include <Tag_ICAO.h>
-
-/*
-#include "SecLogger.h"
-#include "SmartCard.h"
-#include "Bcr250bt.h"
-#include "BioPin.h"
-#include "misc.h"
-#include "Nfc.h"
-*/
 #include <utils.h>
 #include <Coder.h>
 #include <openssl/rand.h>
@@ -24,7 +14,7 @@
 
 
 
-//#define _FOR_BECH		// Workaround for BECH. The don't expect SOLEMBIO_ERROR_MOC_LOCKED in MOC, so it returns ok if card is bloqued.
+//#define _FOR_BECH		// Workaround for BECH. The don't expect BIO_ERROR_MOC_LOCKED in MOC, so it returns ok if card is bloqued.
 
 int		iIsOld = 0;
 EAC_CTX* pcd_ctx = NULL;
@@ -186,9 +176,9 @@ static int unWrap(unsigned char* tag, int tagLen, unsigned char* inData, int inL
 	return resultLen;
 }
 
-static int transmitPlainApdu(stSolemICAOPtr opSICAO, void *pDev, unsigned char* ucpHeader, unsigned char ucLc, unsigned char* ucpData, unsigned char ucLe, unsigned char* ucpSw1, unsigned char* ucpSw2, unsigned char* ucpApduRsp, int *ipApduRspLen)
+static int transmitPlainApdu(sHndICAOPtr opSICAO, void *pDev, unsigned char* ucpHeader, unsigned char ucLc, unsigned char* ucpData, unsigned char ucLe, unsigned char* ucpSw1, unsigned char* ucpSw2, unsigned char* ucpApduRsp, int *ipApduRspLen)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 int					iTmpApduRspLen = 0;
 unsigned char		aApduMsg[255 + 6];
@@ -198,10 +188,10 @@ int					iApduResponseLen = 256 + 2;
 
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
-	//	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemBio - SolemICAO - transmitPlainApdu - IN");
+	//	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"Bio - ICAO - transmitPlainApdu - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	*ucpSw1 = 0;
 	*ucpSw2 = 0;
@@ -222,7 +212,7 @@ int					iApduResponseLen = 256 + 2;
 		aApduMsg[iApduMsgLen++] = ucLe;
 
 
-	//	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"SolemBio - transmitPlainApdu Cmd:");
+	//	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"Bio - transmitPlainApdu Cmd:");
 	//	DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduMsg, iApduMsgLen);
 	//	iTmpApduRspLen = 2;
 	//	if (ucLe != 0)
@@ -237,28 +227,28 @@ int					iApduResponseLen = 256 + 2;
 	iApduResponseLen = sizeof(aApduResponse);
 	memset(aApduResponse, 0, sizeof(aApduResponse));
 #ifdef _DEBUG
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitApdu - Tx Frame [%d]", iApduMsgLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduMsg, iApduMsgLen);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitApdu - Tx Frame [%d]", iApduMsgLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduMsg, iApduMsgLen);
 #endif
 	pSBIO->lReturn = opSICAO->fn_Transmit(pDev, aApduMsg, (long)iApduMsgLen, aApduResponse, (long*)&iApduResponseLen);
 	if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_PLAIN_APDU;
-		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - ERROR Transmit Apdu [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_TRANSMIT_PLAIN_APDU;
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - ERROR Transmit Apdu [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_transmitPlainApdu;
 	}
 #ifdef _DEBUG
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitApdu - Rx Frame [%d]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitApdu - Rx Frame [%d]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
-	//	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"SolemBio - transmitPlainApdu Rsp:");
+	//	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"Bio - transmitPlainApdu Rsp:");
 	//	DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"SolemBio - transmitApdu Le:%d RspLen:%d Dif:%d", ucLe, iApduResponseLen, iApduResponseLen - ucLe);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"Bio - transmitApdu Le:%d RspLen:%d Dif:%d", ucLe, iApduResponseLen, iApduResponseLen - ucLe);
 
 	if(iApduResponseLen < 2)
 	{
 		pSBIO->lReturn = iApduResponseLen;
-		pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_PLAIN_APDU_RESP;
-		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - ERROR Transmit Apdu Resp [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_TRANSMIT_PLAIN_APDU_RESP;
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - ERROR Transmit Apdu Resp [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_transmitPlainApdu;
 	}
 
@@ -275,15 +265,15 @@ int					iApduResponseLen = 256 + 2;
 		*ipApduRspLen = 0;
 	}
 
-	//	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - transmitPlainApdu - OUT");
+	//	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - transmitPlainApdu - OUT");
 JMP_transmitPlainApdu:
 
 	return pSBIO->lError;
 }
 
-static int udateICAOkey(stSolemICAOPtr opSICAO)
+static int udateICAOkey(sHndICAOPtr opSICAO)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 int					iTmp;
@@ -297,10 +287,10 @@ char					sDocExpityDate[16];
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - udateICAOkey - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - udateICAOkey - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 	
 	memset(sDocSerial, 0, sizeof(sDocSerial));
 	memset(sDocBirthDate, 0, sizeof(sDocBirthDate));
@@ -308,27 +298,27 @@ char					sDocExpityDate[16];
 
 	// Get Doc MRZ from QR
 	iTmp = sizeof(sDocBarcode);
-	pSBIO->lReturn = sBioGetData(pSBIO, SOLEMBIO_DATAFIELD_DOC_BARCODE, SOLEMBIO_DATAFIELDPROP_NONE, sDocBarcode, &iTmp);
-	if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR && pSBIO->lReturn != SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+	pSBIO->lReturn = sBioGetData(pSBIO, BIO_DATAFIELD_DOC_BARCODE, BIO_DATAFIELDPROP_NONE, sDocBarcode, &iTmp);
+	if(pSBIO->lReturn != BIO_ERROR_NO_ERROR && pSBIO->lReturn != BIO_ERROR_NO_DATA_AVAILABLE)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_GETDOCBARCODE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Get Doc Barcode [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_UPDATEKEY_GETDOCBARCODE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Get Doc Barcode [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_udateICAOkey;
 	}
-	else if (pSBIO->lReturn == SOLEMBIO_ERROR_NO_ERROR)
+	else if (pSBIO->lReturn == BIO_ERROR_NO_ERROR)
 	{
 		//opSICAO->sICAOKey
-		pSBIO->lReturn = sBioGetData(pSBIO, SOLEMBIO_DATAFIELD_DOC_TYPE, SOLEMBIO_DATAFIELDPROP_NONE, NULL, &iDocType);
-		if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		pSBIO->lReturn = sBioGetData(pSBIO, BIO_DATAFIELD_DOC_TYPE, BIO_DATAFIELDPROP_NONE, NULL, &iDocType);
+		if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_GETDOCTYPE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Get Doc Type [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_GETDOCTYPE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Get Doc Type [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
-		if (iDocType != SOLEMBIO_DOCTYPE_CLID2013 && iDocType != SOLEMBIO_DOCTYPE_CLID2013_ESP)
+		if (iDocType != BIO_DOCTYPE_CLID2013 && iDocType != BIO_DOCTYPE_CLID2013_ESP)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_INVALID_DOCTYPE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Invalid Doc Type [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_INVALID_DOCTYPE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Invalid Doc Type [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
 
@@ -343,53 +333,53 @@ char					sDocExpityDate[16];
 			}
 		}
 	}
-	else if(pSBIO->lReturn == SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+	else if(pSBIO->lReturn == BIO_ERROR_NO_DATA_AVAILABLE)
 	{
 		// Get Doc Serial
 		iTmp = sizeof(sDocSerial);
-		pSBIO->lReturn = sBioGetData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SERIAL, SOLEMBIO_DATAFIELDPROP_NONE, sDocSerial, &iTmp);
-		if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR && pSBIO->lReturn != SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+		pSBIO->lReturn = sBioGetData(pSBIO, BIO_DATAFIELD_DOC_SERIAL, BIO_DATAFIELDPROP_NONE, sDocSerial, &iTmp);
+		if(pSBIO->lReturn != BIO_ERROR_NO_ERROR && pSBIO->lReturn != BIO_ERROR_NO_DATA_AVAILABLE)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_GETDOCSERIAL;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Get Doc Serial [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_GETDOCSERIAL;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Get Doc Serial [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
-		else if(pSBIO->lReturn == SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+		else if(pSBIO->lReturn == BIO_ERROR_NO_DATA_AVAILABLE)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_DOCSERIAL_UNAVAILABLE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Doc Serial Unavailable[%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_DOCSERIAL_UNAVAILABLE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Doc Serial Unavailable[%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
 
 		// Get Doc BirthDate
 		iTmp = sizeof(sDocBirthDate);
-		pSBIO->lReturn = sBioGetData(pSBIO, SOLEMBIO_DATAFIELD_DOC_BIRTHDATE, SOLEMBIO_DATAFIELDPROP_NONE, sDocBirthDate, &iTmp);
-		if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR && pSBIO->lReturn != SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+		pSBIO->lReturn = sBioGetData(pSBIO, BIO_DATAFIELD_DOC_BIRTHDATE, BIO_DATAFIELDPROP_NONE, sDocBirthDate, &iTmp);
+		if(pSBIO->lReturn != BIO_ERROR_NO_ERROR && pSBIO->lReturn != BIO_ERROR_NO_DATA_AVAILABLE)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_GETDOCBIRTHDATE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Get Doc BirthDate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_GETDOCBIRTHDATE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Get Doc BirthDate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
-		else if(pSBIO->lReturn == SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+		else if(pSBIO->lReturn == BIO_ERROR_NO_DATA_AVAILABLE)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_DOCBIRTHDATE_UNAVAILABLE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Doc BirthDate Unavailable[%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_DOCBIRTHDATE_UNAVAILABLE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Doc BirthDate Unavailable[%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
 
 		// Get Doc ExpiryDate
 		iTmp = sizeof(sDocExpityDate);
-		pSBIO->lReturn = sBioGetData(pSBIO, SOLEMBIO_DATAFIELD_DOC_EXPIRYDATE, SOLEMBIO_DATAFIELDPROP_NONE, sDocExpityDate, &iTmp);
-		if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR && pSBIO->lReturn != SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+		pSBIO->lReturn = sBioGetData(pSBIO, BIO_DATAFIELD_DOC_EXPIRYDATE, BIO_DATAFIELDPROP_NONE, sDocExpityDate, &iTmp);
+		if(pSBIO->lReturn != BIO_ERROR_NO_ERROR && pSBIO->lReturn != BIO_ERROR_NO_DATA_AVAILABLE)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_GETDOCEXPIRYDATE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Get Doc ExpiryDate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_GETDOCEXPIRYDATE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Get Doc ExpiryDate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
-		else if(pSBIO->lReturn == SOLEMBIO_ERROR_NO_DATA_AVAILABLE)
+		else if(pSBIO->lReturn == BIO_ERROR_NO_DATA_AVAILABLE)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEKEY_DOCEXPIRYDATE_UNAVAILABLE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - udateICAOkey - ERROR Doc ExpiryDate Unavailable[%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_UPDATEKEY_DOCEXPIRYDATE_UNAVAILABLE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - udateICAOkey - ERROR Doc ExpiryDate Unavailable[%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_udateICAOkey;
 		}
 
@@ -403,18 +393,18 @@ char					sDocExpityDate[16];
 		sprintf_s(opSICAO->sICAOKey, sizeof(opSICAO->sICAOKey), "%s%s%s", sDocSerial, sDocBirthDate, sDocExpityDate);
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - udateICAOkey - icaoKey [%s]", opSICAO->sICAOKey);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - udateICAOkey - icaoKey [%s]", opSICAO->sICAOKey);
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - udateICAOkey - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - udateICAOkey - OUT");
 
 JMP_udateICAOkey:
 
 	return pSBIO->lError;
 }
 
-static int getMac(stSolemICAOPtr opSICAO, unsigned char *ucpData, int iDataLen,unsigned char *ucpMac, int *ipMacLen)
+static int getMac(sHndICAOPtr opSICAO, unsigned char *ucpData, int iDataLen,unsigned char *ucpMac, int *ipMacLen)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 unsigned char		aIvMac[8];
@@ -429,10 +419,10 @@ int					iDataDencLen = 0;
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - getMac - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - getMac - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	memset(aIvMac, 0, sizeof(aIvMac));
 	memcpy_s(a8KeyMac, sizeof(a8KeyMac), opSICAO->aKeyMac, 8);
@@ -444,8 +434,8 @@ int					iDataDencLen = 0;
 	pSBIO->lReturn = getCrypt(NID_des_cbc, CODER_CRYPT_ENCRYPT, a8KeyMac, sizeof(a8KeyMac), aIvMac, sizeof(aIvMac), ucpData, iDataLen, aDataEnc, &iDataEncLen, 0);
 	if (pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_GETMAC_ENCRYPT;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - getMac - ERROR Encrypt [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_GETMAC_ENCRYPT;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - getMac - ERROR Encrypt [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getMac;
 	}
 	
@@ -455,8 +445,8 @@ int					iDataDencLen = 0;
 	pSBIO->lReturn = getCrypt(NID_des_ecb, CODER_CRYPT_DECRYPT, aKeyMac8, sizeof(aKeyMac8), NULL, 0, aDataEnc + iDataEncLen - 8, 8, aDataDenc, &iDataDencLen, 0);
 	if (pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_GETMAC_DECRYPT;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - getMac - ERROR Decrypt [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_GETMAC_DECRYPT;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - getMac - ERROR Decrypt [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getMac;
 	}
 
@@ -465,21 +455,21 @@ int					iDataDencLen = 0;
 	pSBIO->lReturn = getCrypt(NID_des_ecb, CODER_CRYPT_ENCRYPT, a8KeyMac, sizeof(a8KeyMac), NULL, 0, aDataDenc, iDataDencLen, ucpMac, ipMacLen, 0);
 	if (pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_GETMAC_DECRYPT;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - getMac - ERROR Decrypt [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_GETMAC_DECRYPT;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - getMac - ERROR Decrypt [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getMac;
 	}
 	
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - getMac - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - getMac - OUT");
 
 JMP_getMac:
 	return pSBIO->lError;
 }
 
-static int transmitSecureApdu(stSolemICAOPtr opSICAO, void *pDev, unsigned char* ucpHeader, unsigned char ucLc, unsigned char* ucpData, unsigned char ucLe, unsigned char* ucpSw1, unsigned char* ucpSw2, unsigned char* ucpApduRsp, int *ipApduRspLen)
+static int transmitSecureApdu(sHndICAOPtr opSICAO, void *pDev, unsigned char* ucpHeader, unsigned char ucLc, unsigned char* ucpData, unsigned char ucLe, unsigned char* ucpSw1, unsigned char* ucpSw2, unsigned char* ucpApduRsp, int *ipApduRspLen)
 {
 
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 unsigned char		aIv[8];
@@ -510,15 +500,15 @@ int					iTmpApduRspLen;
 
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - transmitSecureApdu - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - transmitSecureApdu - IN");
 
 #ifdef _DEBUG
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Input Apdu Header [%ld]", 4); DisplayHex(pLogger, LOG_LEVEL_DEBUG, ucpHeader, 4);
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Input Apdu Data [%ld][%ld]", ucLc, ucLe); DisplayHex(pLogger, LOG_LEVEL_DEBUG, ucpData, ucLc);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Input Apdu Header [%ld]", 4); DisplayHex(pLogger, LOG_LEVEL_DEBUG, ucpHeader, 4);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Input Apdu Data [%ld][%ld]", ucLc, ucLe); DisplayHex(pLogger, LOG_LEVEL_DEBUG, ucpData, ucLc);
 #endif
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	memset(aIv, 0, sizeof(aIv));
 
@@ -531,8 +521,8 @@ int					iTmpApduRspLen;
 	{
 		if (pcd_ctx == NULL)
 		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR EAC Context NULL");
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR EAC Context NULL");
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
 			goto JMP_transmitSecureApdu;
 		}
 	}
@@ -544,8 +534,8 @@ int					iTmpApduRspLen;
 	{
 		if (EAC_increment_ssc(pcd_ctx) == 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR EAC_increment_ssc");
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR EAC_increment_ssc");
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
 			goto JMP_transmitSecureApdu;
 		}
 	}
@@ -587,7 +577,7 @@ int					iTmpApduRspLen;
 			if (bmDataPadded != NULL)
 			{
 #ifdef _DEBUG
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - EAC_add_iso_pad [%ld]", bmDataPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataPadded->data, bmDataPadded->length);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - EAC_add_iso_pad [%ld]", bmDataPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataPadded->data, bmDataPadded->length);
 #endif
 				memset(aDataPadd, 0, sizeof(aDataPadd));
 				memcpy_s(aDataPadd, sizeof(aDataPadd), bmDataPadded->data, bmDataPadded->length);
@@ -600,7 +590,7 @@ int					iTmpApduRspLen;
 					aDo87[0] = 0x85;
 					if (iDataPaddLen > 255)
 					{
-						PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Tag 0x85 DataPadLen > 255 [%ld]", iDataPaddLen);
+						PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Tag 0x85 DataPadLen > 255 [%ld]", iDataPaddLen);
 						aDo87[1] = 0x82;
 						aDo87[2] = iDataPaddLen >> 8;
 						aDo87[3] = iDataPaddLen & 0xFF;
@@ -623,7 +613,7 @@ int					iTmpApduRspLen;
 					aDo87[0] = 0x87;
 					if (iDataPaddLen > 255)
 					{
-						PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Tag 0x87 DataPadLen > 255 [%ld]", iDataPaddLen);
+						PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Tag 0x87 DataPadLen > 255 [%ld]", iDataPaddLen);
 						aDo87[1] = 0x82;
 						aDo87[2] = iDataPaddLen >> 8;
 						aDo87[3] = iDataPaddLen & 0xFF;
@@ -647,8 +637,8 @@ int					iTmpApduRspLen;
 
 				BUF_MEM* bmDataIn = BUF_MEM_create_init(aDataPadd, iDataPaddLen);
 #ifdef _DEBUG
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - EAC_encrypt Data To Encript [%ld]", iDataPaddLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataPadd, iDataPaddLen);
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - EAC_encrypt [%ld]", bmDataIn->length);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - EAC_encrypt Data To Encript [%ld]", iDataPaddLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataPadd, iDataPaddLen);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - EAC_encrypt [%ld]", bmDataIn->length);
 #endif
 				BUF_MEM* bmDataOut = EAC_encrypt(pcd_ctx, bmDataIn);
 				if (bmDataOut != NULL)
@@ -657,12 +647,12 @@ int					iTmpApduRspLen;
 					iDo87Len = bmDataOut->length + iDo87Offset;
 					pSBIO->lReturn = 0;
 #ifdef _DEBUG
-					PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - aDo87 [%ld]", iDo87Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo87, iDo87Len);
+					PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - aDo87 [%ld]", iDo87Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo87, iDo87Len);
 #endif
 				}
 				else
 				{
-					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - EAC_encrypt NULL");
+					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - EAC_encrypt NULL");
 					pSBIO->lReturn = CODER_ERROR_CRYPT_DECRYPTPAD;
 				}
 
@@ -673,7 +663,7 @@ int					iTmpApduRspLen;
 			}
 			else
 			{
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - EAC_add_iso_pad NULL");
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - EAC_add_iso_pad NULL");
 				pSBIO->lReturn = CODER_ERROR_CRYPT_DECRYPTPAD;
 			}
 			
@@ -686,8 +676,8 @@ int					iTmpApduRspLen;
 
 		if(pSBIO->lReturn != 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - transmitSecureApdu - ERROR Do87 Data Enc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - transmitSecureApdu - ERROR Do87 Data Enc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_transmitSecureApdu;
 		}
 	}
@@ -722,10 +712,10 @@ int					iTmpApduRspLen;
 		iDo8ELen = 8;
 		memset(aDo8E, 0, sizeof(aDo8E));
 
-		if (getMac(opSICAO, aDo8EDataPadd, iDo8EDataPaddLen, aDo8E + 2, &iDo8ELen) != SOLEMICAO_ERROR_NO_ERROR)
+		if (getMac(opSICAO, aDo8EDataPadd, iDo8EDataPaddLen, aDo8E + 2, &iDo8ELen) != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO8E_MAC;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR Do8E Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO8E_MAC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR Do8E Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_transmitSecureApdu;
 		}
 	}
@@ -734,26 +724,26 @@ int					iTmpApduRspLen;
 		unsigned char aDo8797[300];
 		int iPos = 0;
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - aSecureHeaderPadd [%ld]", 4); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aSecureHeaderPadd, 4);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - aSecureHeaderPadd [%ld]", 4); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aSecureHeaderPadd, 4);
 #endif
 		BUF_MEM* bmHeaderToPad = BUF_MEM_create_init(aSecureHeaderPadd, 4);
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - bmHeaderToPad [%ld]", bmHeaderToPad->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmHeaderToPad->data, bmHeaderToPad->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - bmHeaderToPad [%ld]", bmHeaderToPad->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmHeaderToPad->data, bmHeaderToPad->length);
 #endif
 		BUF_MEM* bmHeaderPadded = EAC_add_iso_pad(pcd_ctx, bmHeaderToPad);
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - bmHeaderPadded [%ld]", bmHeaderPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmHeaderPadded->data, bmHeaderPadded->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - bmHeaderPadded [%ld]", bmHeaderPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmHeaderPadded->data, bmHeaderPadded->length);
 #endif
 		memcpy_s(aDo8797, sizeof(aDo8797), bmHeaderPadded->data, bmHeaderPadded->length);
 		iPos += bmHeaderPadded->length;
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Header Padded [%ld]", iPos); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo8797, iPos);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Header Padded [%ld]", iPos); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo8797, iPos);
 #endif
 		BUF_MEM* bmDataIn = NULL;
 		memcpy_s(aDo8797 + iPos, sizeof(aDo8797) - iPos, aDo87, iDo87Len);
 		iPos += iDo87Len;
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Header+87 Padded [%ld]", iPos); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo8797, iPos);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Header+87 Padded [%ld]", iPos); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo8797, iPos);
 #endif
 		if (ucLe != 0)
 		{
@@ -766,12 +756,12 @@ int					iTmpApduRspLen;
 			bmDataIn = BUF_MEM_create_init(aDo8797, iPos);
 		}
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Header+87+97 Padded [%ld]", iPos); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo8797, iPos);
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Header+87+97 Padded BUFF [%ld]", bmDataIn->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataIn->data, bmDataIn->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Header+87+97 Padded [%ld]", iPos); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDo8797, iPos);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Header+87+97 Padded BUFF [%ld]", bmDataIn->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataIn->data, bmDataIn->length);
 #endif
 		BUF_MEM* bmDataPadded = EAC_add_iso_pad(pcd_ctx, bmDataIn);
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Header+87+97 Padded BUFF Padded [%ld]", bmDataPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataPadded->data, bmDataPadded->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Header+87+97 Padded BUFF Padded [%ld]", bmDataPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataPadded->data, bmDataPadded->length);
 #endif
 		BUF_MEM* bnMac = EAC_authenticate(pcd_ctx, bmDataPadded);
 		if (bnMac != NULL)
@@ -781,8 +771,8 @@ int					iTmpApduRspLen;
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO8E_MAC;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR Do8E Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO8E_MAC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR Do8E Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			// Free all BUFF_MEM
 			if (bmHeaderToPad)
 				BUF_MEM_free(bmHeaderToPad);
@@ -838,21 +828,21 @@ int					iTmpApduRspLen;
 	//iTmpApduRspLen += 10;
 
 #ifdef _DEBUG
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Data To Tx [%ld]", 4); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aSecureHeaderPadd, 4);
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Data To Tx [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduData, iApduDataLen);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Data To Tx [%ld]", 4); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aSecureHeaderPadd, 4);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Data To Tx [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduData, iApduDataLen);
 #endif
 
 	pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aSecureHeaderPadd, iApduDataLen, aApduData, (unsigned char)iTmpApduRspLen, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-	if(pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+	if(pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - transmitSecureApdu - ERROR Transmit [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - transmitSecureApdu - ERROR Transmit [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_transmitSecureApdu;
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Apdu Resp [%02X][%02X]", ucSw1, ucSw2);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Apdu Resp [%02X][%02X]", ucSw1, ucSw2);
 #ifdef _DEBUG
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"SolemBio - SecTransmitApdu Le:%d RspLen:%d Dif:%d", ucLe, iApduResponseLen, iApduResponseLen - ucLe); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char *)"Bio - SecTransmitApdu Le:%d RspLen:%d Dif:%d", ucLe, iApduResponseLen, iApduResponseLen - ucLe); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
 
 	// Increment session counter
@@ -862,8 +852,8 @@ int					iTmpApduRspLen;
 	{
 		if (EAC_increment_ssc(pcd_ctx) == 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR EAC_increment_ssc");
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR EAC_increment_ssc");
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
 			goto JMP_transmitSecureApdu;
 		}
 	}
@@ -908,8 +898,8 @@ int					iTmpApduRspLen;
 	}
 	else
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO99;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - transmitSecureApdu - ERROR Do99 Missed [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO99;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - transmitSecureApdu - ERROR Do99 Missed [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_transmitSecureApdu;
 	}
 
@@ -920,8 +910,8 @@ int					iTmpApduRspLen;
 	}
 	else
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO8E;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - transmitSecureApdu - ERROR Do8E Missed [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO8E;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - transmitSecureApdu - ERROR Do8E Missed [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_transmitSecureApdu;
 	}
 
@@ -950,18 +940,18 @@ int					iTmpApduRspLen;
 		iDo8ELen = 8;
 		memset(aDo8EMac, 0, sizeof(aDo8EMac));
 
-		if (getMac(opSICAO, aDo8EDataPadd, iDo8EDataPaddLen, aDo8EMac, &iDo8ELen) != SOLEMICAO_ERROR_NO_ERROR)
+		if (getMac(opSICAO, aDo8EDataPadd, iDo8EDataPaddLen, aDo8EMac, &iDo8ELen) != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO8E_MAC;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR Do8E Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO8E_MAC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR Do8E Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_transmitSecureApdu;
 		}
 		//	VERIFY
 		pSBIO->lReturn = memcmp(aDo8EMac, aDo8E + 2, 8);
 		if (pSBIO->lReturn != 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO8E_MAC_MISMATCH;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR Do8E Data Mac Mismatch [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO8E_MAC_MISMATCH;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR Do8E Data Mac Mismatch [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_transmitSecureApdu;
 		}
 	}
@@ -970,22 +960,22 @@ int					iTmpApduRspLen;
 		// Data to Drecytp
 		BUF_MEM* bmDataIn = BUF_MEM_create_init(aApduResponse, iApduResponseLen - 10);
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Data To Verify [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataIn->data, bmDataIn->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Data To Verify [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataIn->data, bmDataIn->length);
 #endif
 		BUF_MEM* bmDataPadded = EAC_add_iso_pad(pcd_ctx, bmDataIn);
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Data To Verify Padded [%ld]", bmDataPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataPadded->data, bmDataPadded->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Data To Verify Padded [%ld]", bmDataPadded->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataPadded->data, bmDataPadded->length);
 #endif
 		// Mac from response
 		BUF_MEM* bnMac = BUF_MEM_create_init(aDo8E + 2, 8);
 		//	VERIFY
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - MAC To Verify [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bnMac->data, bnMac->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - MAC To Verify [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bnMac->data, bnMac->length);
 #endif
 		if (EAC_verify_authentication(pcd_ctx, bmDataPadded, bnMac) == 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR EAC_verify_authentication");
-			pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR EAC_verify_authentication");
+			pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDU_DO87_ENC;
 			// Free all BUFF_MEM
 			if (bmDataIn)
 				BUF_MEM_free(bmDataIn);
@@ -1014,8 +1004,8 @@ int					iTmpApduRspLen;
 			pSBIO->lReturn = getCrypt(NID_des_ede_cbc, CODER_CRYPT_DECRYPT, opSICAO->aKeyEnc, sizeof(opSICAO->aKeyEnc), aIv, sizeof(aIv), aDo87 + iDo87Offset, iDo87Len - iDo87Offset, aDataPadd, &iDataPaddLen, 0);
 			if (pSBIO->lReturn != 0)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO87_DENC;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR Do87 Resp Data Denc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO87_DENC;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR Do87 Resp Data Denc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				goto JMP_transmitSecureApdu;
 			}
 		}
@@ -1023,13 +1013,13 @@ int					iTmpApduRspLen;
 		{
 			BUF_MEM* bmDataIn = BUF_MEM_create_init(aDo87 + iDo87Offset, iDo87Len - iDo87Offset);
 #ifdef _DEBUG
-			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Data To Decrypt [%ld]", bmDataIn->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataIn->data, bmDataIn->length);
+			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Data To Decrypt [%ld]", bmDataIn->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataIn->data, bmDataIn->length);
 #endif
 			BUF_MEM* bmDataOut = EAC_decrypt(pcd_ctx, bmDataIn);
 			if (bmDataOut != NULL)
 			{
 #ifdef _DEBUG
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - transmitSecureApdu - Data Decrypted [%ld]", bmDataOut->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataOut->data, bmDataOut->length);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - transmitSecureApdu - Data Decrypted [%ld]", bmDataOut->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, bmDataOut->data, bmDataOut->length);
 #endif
 				memcpy_s(aDataPadd, sizeof(aDataPadd), bmDataOut->data, bmDataOut->length);
 				iDataPaddLen = bmDataOut->length;
@@ -1037,8 +1027,8 @@ int					iTmpApduRspLen;
 			}
 			else
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO87_DENC;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - transmitSecureApdu - ERROR EAC_decrypt");
+				pSBIO->lError = ICAO_ERROR_TRANSMIT_SECURE_APDURESP_DO87_DENC;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - transmitSecureApdu - ERROR EAC_decrypt");
 				// Free all BUFF_MEM
 				if (bmDataIn)
 					BUF_MEM_free(bmDataIn);
@@ -1081,15 +1071,15 @@ int					iTmpApduRspLen;
 	*ucpSw1 = aDo99[2];
 	*ucpSw2 = aDo99[3];
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - transmitSecureApdu - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - transmitSecureApdu - OUT");
 JMP_transmitSecureApdu:
 
 	return pSBIO->lError;
 }
 
-static int authenticate(stSolemICAOPtr opSICAO, void *pDev, unsigned char *ucpChallenge, int iChallengeLen)
+static int authenticate(sHndICAOPtr opSICAO, void *pDev, unsigned char *ucpChallenge, int iChallengeLen)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 int					iTmp;
@@ -1135,10 +1125,10 @@ int					iRespDataPlainLen;
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - authenticate - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - authenticate - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	memset(aIv, 0, sizeof(aIv));
 
@@ -1148,8 +1138,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getHash(NID_sha1, (unsigned char*)opSICAO->sICAOKey, strlen(opSICAO->sICAOKey), aKseed, &iKseedLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KSEED_HASH;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Kseed Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KSEED_HASH;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Kseed Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	aKseed[16] = 0x00;
@@ -1162,8 +1152,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getHash(NID_sha1, aKseed, iKseedLen, aTmpBuff, &iTmpBuffLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KENC_HASH;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Kenc Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KENC_HASH;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Kenc Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	memcpy_s(opSICAO->aKeyEnc, sizeof(opSICAO->aKeyEnc), aTmpBuff, 16);
@@ -1176,8 +1166,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getHash(NID_sha1, aKseed, iKseedLen, aTmpBuff, &iTmpBuffLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KMAC_HASH;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Kmac Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KMAC_HASH;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Kmac Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	memcpy_s(opSICAO->aKeyMac, sizeof(opSICAO->aKeyMac), aTmpBuff, 16);
@@ -1187,8 +1177,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = RAND_bytes(aLocalChallenge, sizeof(aLocalChallenge));
 	if(pSBIO->lReturn != 1)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_LOCAL_CHALLENGE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Local Challege [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_LOCAL_CHALLENGE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Local Challege [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	
@@ -1199,8 +1189,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = RAND_bytes(aLocalRand, sizeof(aLocalRand));
 	if(pSBIO->lReturn != 1)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_LOCAL_RAND;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Local Challege [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_LOCAL_RAND;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Local Challege [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	// Auth data plain S
@@ -1215,8 +1205,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getCrypt(NID_des_ede_cbc, CODER_CRYPT_ENCRYPT, opSICAO->aKeyEnc, sizeof(opSICAO->aKeyEnc), aIv, sizeof(aIv), aAuthDataPlain, iAuthDataPlainLen, aAuthDataEnc, &iAuthDataEncLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_AUTH_DATA_ENC;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Auth Data Enc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_AUTH_DATA_ENC;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Auth Data Enc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	
@@ -1225,10 +1215,10 @@ int					iRespDataPlainLen;
 	aAuthDataEnc[iAuthDataEncLen] = 0x80;
 	iAuthDataEncLen += 8;
 	iAuthDataMacLen = 8;
-	if(getMac(opSICAO, aAuthDataEnc, iAuthDataEncLen, aAuthDataMac, &iAuthDataMacLen) != SOLEMICAO_ERROR_NO_ERROR)
+	if(getMac(opSICAO, aAuthDataEnc, iAuthDataEncLen, aAuthDataMac, &iAuthDataMacLen) != ICAO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_AUTH_DATA_MAC;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Auth Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_AUTH_DATA_MAC;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Auth Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 
@@ -1245,22 +1235,22 @@ int					iRespDataPlainLen;
 	iApduResponseLen = sizeof(aApduResponse);
 	memset(aApduResponse, 0, iApduResponseLen);
 	pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 40, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-	if(pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+	if(pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR External Authenticate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR External Authenticate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	if(ucSw1 != 0x90 || ucSw2 != 0x00)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR External Authenticate Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR External Authenticate Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	if(iApduResponseLen != 40)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP_LEN;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR External Authenticate Resp Len [%ld][%ld]", iApduResponseLen, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP_LEN;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR External Authenticate Resp Len [%ld][%ld]", iApduResponseLen, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 
@@ -1271,18 +1261,18 @@ int					iRespDataPlainLen;
 	aRespDataEnc[32] = 0x80;
 	iRespDataMacLen = sizeof(aRespDataMac);
 	memset(aRespDataMac, 0, iRespDataMacLen);
-	if(getMac(opSICAO, aRespDataEnc, sizeof(aRespDataEnc), aRespDataMac, &iRespDataMacLen) != SOLEMICAO_ERROR_NO_ERROR)
+	if(getMac(opSICAO, aRespDataEnc, sizeof(aRespDataEnc), aRespDataMac, &iRespDataMacLen) != ICAO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP_DATA_MAC;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Resp Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP_DATA_MAC;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Data Mac [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 
 	pSBIO->lReturn = memcmp(aRespDataMac, aApduResponse + 32, 8);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP_MAC_VERIFICATION;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Resp Mac Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP_MAC_VERIFICATION;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Mac Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 
@@ -1293,8 +1283,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getCrypt(NID_des_ede_cbc, CODER_CRYPT_DECRYPT, opSICAO->aKeyEnc, sizeof(opSICAO->aKeyEnc), aIv, sizeof(aIv), aRespDataEnc, iRespDataEncLen, aRespDataPlain, &iRespDataPlainLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP_DATA_ENC;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Resp Data Enc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP_DATA_ENC;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Data Enc [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 
@@ -1302,16 +1292,16 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = memcmp(aSCardChallenge, aRespDataPlain, 8);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP_SCARD_CHALLENGE_VERIFICATION;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Resp SmartCard Challenge Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP_SCARD_CHALLENGE_VERIFICATION;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp SmartCard Challenge Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	//	Compare local challenge RANDIFD
 	pSBIO->lReturn = memcmp(aLocalChallenge, aRespDataPlain + 8, 8);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_RESP_LOCAL_CHALLENGE_VERIFICATION;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR Resp Local Challenge Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_RESP_LOCAL_CHALLENGE_VERIFICATION;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Local Challenge Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 
@@ -1339,8 +1329,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getHash(NID_sha1, aKseed, iKseedLen, aTmpBuff, &iTmpBuffLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KENC_HASH;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Kenc Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KENC_HASH;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Kenc Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	memcpy_s(opSICAO->aKeyEnc, sizeof(opSICAO->aKeyEnc), aTmpBuff, 16);
@@ -1353,8 +1343,8 @@ int					iRespDataPlainLen;
 	pSBIO->lReturn = getHash(NID_sha1, aKseed, iKseedLen, aTmpBuff, &iTmpBuffLen, 0);
 	if(pSBIO->lReturn != 0)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KMAC_HASH;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - authenticate - ERROR get Kmac Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KMAC_HASH;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR get Kmac Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
 	memcpy_s(opSICAO->aKeyMac, sizeof(opSICAO->aKeyMac), aTmpBuff, 16);
@@ -1363,14 +1353,14 @@ int					iRespDataPlainLen;
 	// At this point it have all keys needed to establish
 	// a secure communication with the smart card.
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - authenticate - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - authenticate - OUT");
 JMP_authenticate:
 	return pSBIO->lError;
 }
 
-static int updateICAOResults(stSolemICAOPtr opSICAO)
+static int updateICAOResults(sHndICAOPtr opSICAO)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 int					iTmp, iTmp1;
 int					iDGxOffset;
@@ -1381,22 +1371,22 @@ char					sTmp[256];
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - updateICAOResults - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - updateICAOResults - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
-	for(iTmp = 0; iTmp < SOLEMBIO_DATAFIELD_MAX; iTmp++)
+	for(iTmp = 0; iTmp < BIO_DATAFIELD_MAX; iTmp++)
 	{
 		if(!opSICAO->aCaptureField[iTmp])
 			continue;
 
-      PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - updateICAOResults - Updating Item [%ld]", iTmp);
+      PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - updateICAOResults - Updating Item [%ld]", iTmp);
 
 		switch(iTmp)
 		{
-		case SOLEMBIO_DATAFIELD_DOC_RUN:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_RUN:
+			//ICAO_DATAGROUP_1
 			iDGxOffset = 0;
 			memset(sTmp, 0, sizeof(sTmp));
 			while(opSICAO->aDoc_DG_1[iDGxOffset + 53] != '<')
@@ -1406,18 +1396,18 @@ char					sTmp[256];
 			}
 			sTmp[iDGxOffset] = opSICAO->aDoc_DG_1[iDGxOffset + 54];
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_RUN, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_RUN, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_RUN;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData RUN [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_RUN;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData RUN [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_NAMES:
-			//SOLEMICAO_DATAGROUP_1
-			//SOLEMICAO_DATAGROUP_11
+		case BIO_DATAFIELD_DOC_NAMES:
+			//ICAO_DATAGROUP_1
+			//ICAO_DATAGROUP_11
 			memset(sTmp, 0, sizeof(sTmp));
 			iDGxOffset = 0x41;
 			iTmp1 = 0;
@@ -1432,18 +1422,18 @@ char					sTmp[256];
 				iDGxOffset++;
 			}
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_NAMES, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_NAMES, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_NAMES;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData NAMES [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_NAMES;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData NAMES [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_SURNAME_1: //SOLEMBIO_DATAFIELD_DOC_LASTNAME:
-			//SOLEMICAO_DATAGROUP_1
-			//SOLEMICAO_DATAGROUP_11
+		case BIO_DATAFIELD_DOC_SURNAME_1: //BIO_DATAFIELD_DOC_LASTNAME:
+			//ICAO_DATAGROUP_1
+			//ICAO_DATAGROUP_11
 			memset(sTmp, 0, sizeof(sTmp));
 			iDGxOffset = 0x41;
 			iTmp1 = 0;
@@ -1456,18 +1446,18 @@ char					sTmp[256];
 				iDGxOffset++;
 			}
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SURNAME_1, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_SURNAME_1, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SURNAME_PARENTAL;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData PATERNAL [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SURNAME_PARENTAL;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData PATERNAL [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_SURNAME_2:
-			//SOLEMICAO_DATAGROUP_1
-			//SOLEMICAO_DATAGROUP_11
+		case BIO_DATAFIELD_DOC_SURNAME_2:
+			//ICAO_DATAGROUP_1
+			//ICAO_DATAGROUP_11
 			memset(sTmp, 0, sizeof(sTmp));
 			iDGxOffset = 0x41;
 			iTmp1 = 0;
@@ -1482,117 +1472,117 @@ char					sTmp[256];
 				iDGxOffset++;
 			}
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SURNAME_2, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_SURNAME_2, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SURNAME_MATERNAL;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData MATERNAL [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SURNAME_MATERNAL;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData MATERNAL [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_GENDER:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_GENDER:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			
 			sTmp[0] = opSICAO->aDoc_DG_1[42];
 			
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_GENDER, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_GENDER, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_GENDER;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData GENDER [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_GENDER;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData GENDER [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_NATIONALITY:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_NATIONALITY:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_1 + 50, 3);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_NATIONALITY, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_NATIONALITY, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_NATIONALITY;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData NATIONALITY [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_NATIONALITY;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData NATIONALITY [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_BIRTHDATE:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_BIRTHDATE:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_1 + 35, 6);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_BIRTHDATE, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_BIRTHDATE, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_BIRTHDATE;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData BIRTH [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_BIRTHDATE;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData BIRTH [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_EXPIRYDATE:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_EXPIRYDATE:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_1 + 43, 6);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_EXPIRYDATE, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_EXPIRYDATE, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_EXPIRYDATE;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData EXPIRY [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_EXPIRYDATE;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData EXPIRY [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_MRZ:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_MRZ:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_1 + 5, opSICAO->iDoc_DG_1Len - 5);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_MRZ, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_MRZ, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_MRZ;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData MRZ [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_MRZ;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData MRZ [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_SERIAL:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_SERIAL:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_1 + 10, 9);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SERIAL, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_SERIAL, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SERIAL;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData SERIAL [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SERIAL;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData SERIAL [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_COUNTRY_OF_ISSUE:
-			//SOLEMICAO_DATAGROUP_1
+		case BIO_DATAFIELD_DOC_COUNTRY_OF_ISSUE:
+			//ICAO_DATAGROUP_1
 			memset(sTmp, 0, sizeof(sTmp));
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_1 + 7, 3);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_COUNTRY_OF_ISSUE, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_COUNTRY_OF_ISSUE, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_COUNTRY_OF_ISSUE;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData COUNTRY [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_COUNTRY_OF_ISSUE;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData COUNTRY [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		// TODO case SOLEMBIO_DATAFIELD_DOC_OFFICE_CODE:
-		case SOLEMBIO_DATAFIELD_DOC_OCUPATION:
-			//SOLEMICAO_DATAGROUP_11
+		// TODO case BIO_DATAFIELD_DOC_OFFICE_CODE:
+		case BIO_DATAFIELD_DOC_OCUPATION:
+			//ICAO_DATAGROUP_11
 			memset(sTmp, 0, sizeof(sTmp));
 			
 			iDGxOffset = 13;
@@ -1603,7 +1593,7 @@ char					sTmp[256];
 				{
 					// error
 					iDGxOffset = 0;
-					PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - updateICAOResults - WARN PutData OCUPATION Not Found");
+					PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - updateICAOResults - WARN PutData OCUPATION Not Found");
 					break;
 				}
 			}
@@ -1612,11 +1602,11 @@ char					sTmp[256];
 			{
 				memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_11 + iDGxOffset, opSICAO->aDoc_DG_11[iDGxOffset - 1]);
 
-				pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_OCUPATION, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-				if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+				pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_OCUPATION, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+				if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 				{
-					//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_OCUPATION;
-					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData OCUPATION [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+					//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_OCUPATION;
+					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData OCUPATION [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 					//goto JMP_updateICAOResults;
 				}
 			}
@@ -1631,7 +1621,7 @@ char					sTmp[256];
 					{
 						// error
 						iDGxOffset = 0;
-						PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - updateICAOResults - WARN PutData OCUPATION Not Found in second tag");
+						PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - updateICAOResults - WARN PutData OCUPATION Not Found in second tag");
 						break;
 					}
 				}
@@ -1640,33 +1630,33 @@ char					sTmp[256];
 				{
 					memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_11 + iDGxOffset, opSICAO->aDoc_DG_11[iDGxOffset - 1]);
 
-					pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_OCUPATION, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-					if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_OCUPATION, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+					if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 					{
-						//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_OCUPATION;
-						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData OCUPATION (second tag) [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+						//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_OCUPATION;
+						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData OCUPATION (second tag) [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 						//goto JMP_updateICAOResults;
 					}
 				}
 				else
 				{
-					PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - updateICAOResults - WARN PutData OCUPATION - Setting Default Ocupation [%s][%d]", DEFAULT_ICAO_OPUPATION, strlen(DEFAULT_ICAO_OPUPATION));
+					PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - updateICAOResults - WARN PutData OCUPATION - Setting Default Ocupation [%s][%d]", DEFAULT_ICAO_OPUPATION, strlen(DEFAULT_ICAO_OPUPATION));
 					memcpy_s(sTmp, sizeof(sTmp), DEFAULT_ICAO_OPUPATION, strlen(DEFAULT_ICAO_OPUPATION));
 
-					pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_OCUPATION, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-					if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_OCUPATION, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+					if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 					{
-						//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_OCUPATION;
-						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData OCUPATION (second tag) [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+						//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_OCUPATION;
+						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData OCUPATION (second tag) [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 						//goto JMP_updateICAOResults;
 					}
 				}
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_BIRTHPLACE:
-			//SOLEMICAO_DATAGROUP_11
-			//SOLEMICAO_DATAGROUP_11
+		case BIO_DATAFIELD_DOC_BIRTHPLACE:
+			//ICAO_DATAGROUP_11
+			//ICAO_DATAGROUP_11
 			memset(sTmp, 0, sizeof(sTmp));
 
 			iDGxOffset = 13;
@@ -1682,262 +1672,262 @@ char					sTmp[256];
 
 			memcpy_s(sTmp, sizeof(sTmp), opSICAO->aDoc_DG_11 + iDGxOffset, opSICAO->aDoc_DG_11[iDGxOffset-1]);
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_BIRTHPLACE, SOLEMBIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
-			if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_BIRTHPLACE, BIO_DATAFIELDPROP_NONE, sTmp, strlen(sTmp));
+			if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_BIRTHPLACE;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData BIRTHPLACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_BIRTHPLACE;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData BIRTHPLACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_ISSUEDATE:
-			//SOLEMICAO_DATAGROUP_12
+		case BIO_DATAFIELD_DOC_ISSUEDATE:
+			//ICAO_DATAGROUP_12
 
 			iDGxOffset = opSICAO->iDoc_DG_12Len - 8;
 
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_ISSUEDATE, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_12 + iDGxOffset, 8);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_ISSUEDATE, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_12 + iDGxOffset, 8);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_ISSUEDATE;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData ISSUEDATE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_ISSUEDATE;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData ISSUEDATE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_FACE:
-			//SOLEMICAO_DATAGROUP_2
+		case BIO_DATAFIELD_DOC_FACE:
+			//ICAO_DATAGROUP_2
 			// TODO identificar inicio de foto segun estructura "Face Template" de NIST
 			iDGxOffset = 0;
 			//while(memcmp(aYoyqPatern, opSICAO->aDoc_DG_2 + iDGxOffset, sizeof(aYoyqPatern))) 
 			while (memcmp(aJP2Patern, opSICAO->aDoc_DG_2 + iDGxOffset, sizeof(aJP2Patern)))
 				iDGxOffset++;
 
-			// Before put new jp2 image, claen all images formats of SOLEMBIO_DATAFIELD_DOC_FACE
-			pSBIO->lReturn = sBioCleanData(pSBIO, SOLEMBIO_DATAFIELD_DOC_FACE, SOLEMBIO_DATAFIELDPROP_NONE);
-			if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			// Before put new jp2 image, claen all images formats of BIO_DATAFIELD_DOC_FACE
+			pSBIO->lReturn = sBioCleanData(pSBIO, BIO_DATAFIELD_DOC_FACE, BIO_DATAFIELDPROP_NONE);
+			if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData FACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData FACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 			}
 			else
 			{
-				pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_FACE, SOLEMBIO_DATAFIELDPROP_IMAGEFORMAT_SOLJP2, opSICAO->aDoc_DG_2 + iDGxOffset, opSICAO->iDoc_DG_2Len - iDGxOffset);
-				if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+				pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FACE, BIO_DATAFIELDPROP_IMAGEFORMAT_SOLJP2, opSICAO->aDoc_DG_2 + iDGxOffset, opSICAO->iDoc_DG_2Len - iDGxOffset);
+				if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 				{
-					//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_FACE;
-					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData FACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+					//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_FACE;
+					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData FACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 					//goto JMP_updateICAOResults;
 				}
 			}
 			
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_SIGNATURE:
-			//SOLEMICAO_DATAGROUP_7
+		case BIO_DATAFIELD_DOC_SIGNATURE:
+			//ICAO_DATAGROUP_7
 			// TODO identificar inicio de firma segun estructura "Face Template" de NIST
 			iDGxOffset = 0;
 			//while(memcmp(aYoyqPatern, opSICAO->aDoc_DG_7 + iDGxOffset, sizeof(aYoyqPatern))) 
 			while (memcmp(aJP2Patern, opSICAO->aDoc_DG_7 + iDGxOffset, sizeof(aJP2Patern)))
 				iDGxOffset++;
 
-			// Before put new jp2 image, claen all images formats of SOLEMBIO_DATAFIELD_DOC_SIGNATURE
-			pSBIO->lReturn = sBioCleanData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SIGNATURE, SOLEMBIO_DATAFIELDPROP_NONE);
-			if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+			// Before put new jp2 image, claen all images formats of BIO_DATAFIELD_DOC_SIGNATURE
+			pSBIO->lReturn = sBioCleanData(pSBIO, BIO_DATAFIELD_DOC_SIGNATURE, BIO_DATAFIELDPROP_NONE);
+			if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData FACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData FACE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 			}
 			else
 			{
-				pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SIGNATURE, SOLEMBIO_DATAFIELDPROP_IMAGEFORMAT_SOLJP2, opSICAO->aDoc_DG_7 + iDGxOffset, opSICAO->iDoc_DG_7Len - iDGxOffset);
-				if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+				pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_SIGNATURE, BIO_DATAFIELDPROP_IMAGEFORMAT_SOLJP2, opSICAO->aDoc_DG_7 + iDGxOffset, opSICAO->iDoc_DG_7Len - iDGxOffset);
+				if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 				{
-					//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SIGNATURE;
-					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - updateICAOResults - ERROR PutData SIGNATURE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+					//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_SIGNATURE;
+					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - updateICAOResults - ERROR PutData SIGNATURE [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 					//goto JMP_updateICAOResults;
 				}
 			}
 			
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_FINGERID_1:
-		case SOLEMBIO_DATAFIELD_DOC_FINGERID_2:
-		case SOLEMBIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT:
-		case SOLEMBIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT:
+		case BIO_DATAFIELD_DOC_FINGERID_1:
+		case BIO_DATAFIELD_DOC_FINGERID_2:
+		case BIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT:
+		case BIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT:
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_COM:
-			//SOLEMICAO_DATAGROUP_COM
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_COM, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_COM, opSICAO->iDoc_DG_COMLen);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_COM:
+			//ICAO_DATAGROUP_COM
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_COM, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_COM, opSICAO->iDoc_DG_COMLen);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_COM;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DGCOM [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_COM;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DGCOM [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_1:
-			//SOLEMICAO_DATAGROUP_1
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_1, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_1, opSICAO->iDoc_DG_1Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_1:
+			//ICAO_DATAGROUP_1
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_1, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_1, opSICAO->iDoc_DG_1Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_1;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG1 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_1;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG1 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_2:
-			//SOLEMICAO_DATAGROUP_2
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_2, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_2, opSICAO->iDoc_DG_2Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_2:
+			//ICAO_DATAGROUP_2
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_2, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_2, opSICAO->iDoc_DG_2Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_2;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG2 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_2;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG2 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_3:
-			//SOLEMICAO_DATAGROUP_3
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_3, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_3, opSICAO->iDoc_DG_3Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_3:
+			//ICAO_DATAGROUP_3
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_3, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_3, opSICAO->iDoc_DG_3Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_3;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG3 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_3;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG3 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_4:
-			//SOLEMICAO_DATAGROUP_4
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_4, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_4, opSICAO->iDoc_DG_4Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_4:
+			//ICAO_DATAGROUP_4
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_4, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_4, opSICAO->iDoc_DG_4Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_4;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG4 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_4;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG4 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_5:
-			//SOLEMICAO_DATAGROUP_5
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_5, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_5, opSICAO->iDoc_DG_5Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_5:
+			//ICAO_DATAGROUP_5
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_5, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_5, opSICAO->iDoc_DG_5Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_5;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG5 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_5;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG5 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_6:
-			//SOLEMICAO_DATAGROUP_6
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_6, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_6, opSICAO->iDoc_DG_6Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_6:
+			//ICAO_DATAGROUP_6
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_6, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_6, opSICAO->iDoc_DG_6Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_6;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG6 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_6;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG6 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_7:
-			//SOLEMICAO_DATAGROUP_7
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_7, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_7, opSICAO->iDoc_DG_7Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_7:
+			//ICAO_DATAGROUP_7
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_7, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_7, opSICAO->iDoc_DG_7Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_7;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG7 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_7;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG7 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_8:
-			//SOLEMICAO_DATAGROUP_8
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_8, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_8, opSICAO->iDoc_DG_8Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_8:
+			//ICAO_DATAGROUP_8
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_8, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_8, opSICAO->iDoc_DG_8Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_8;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG8 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_8;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG8 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_9:
-			//SOLEMICAO_DATAGROUP_9
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_9, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_9, opSICAO->iDoc_DG_9Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_9:
+			//ICAO_DATAGROUP_9
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_9, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_9, opSICAO->iDoc_DG_9Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_9;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG9 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_9;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG9 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_10:
-			//SOLEMICAO_DATAGROUP_10
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_10, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_10, opSICAO->iDoc_DG_10Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_10:
+			//ICAO_DATAGROUP_10
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_10, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_10, opSICAO->iDoc_DG_10Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_10;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG10 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_10;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG10 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_11:
-			//SOLEMICAO_DATAGROUP_11
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_11, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_11, opSICAO->iDoc_DG_11Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_11:
+			//ICAO_DATAGROUP_11
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_11, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_11, opSICAO->iDoc_DG_11Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_11;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG11 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_11;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG11 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_12:
-			//SOLEMICAO_DATAGROUP_12
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_12, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_12, opSICAO->iDoc_DG_12Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_12:
+			//ICAO_DATAGROUP_12
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_12, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_12, opSICAO->iDoc_DG_12Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_12;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG12 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_12;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG12 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_13:
-			//SOLEMICAO_DATAGROUP_13
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_13, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_13, opSICAO->iDoc_DG_13Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_13:
+			//ICAO_DATAGROUP_13
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_13, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_13, opSICAO->iDoc_DG_13Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_13;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG13 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_13;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG13 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_14:
-			//SOLEMICAO_DATAGROUP_14
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_14, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_14, opSICAO->iDoc_DG_14Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_14:
+			//ICAO_DATAGROUP_14
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_14, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_14, opSICAO->iDoc_DG_14Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_14;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG14 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_14;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG14 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
-		case SOLEMBIO_DATAFIELD_DOC_DG_15:
-			//SOLEMICAO_DATAGROUP_15
-			pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_DG_15, SOLEMBIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_15, opSICAO->iDoc_DG_15Len);
-			if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		case BIO_DATAFIELD_DOC_DG_15:
+			//ICAO_DATAGROUP_15
+			pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_DG_15, BIO_DATAFIELDPROP_NONE, opSICAO->aDoc_DG_15, opSICAO->iDoc_DG_15Len);
+			if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 			{
-				//pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_15;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR PutData DG15 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
+				//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DG_15;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR PutData DG15 [%d][%d]", pSBIO->lReturn, pSBIO->lError);
 				//goto JMP_updateICAOResults;
 			}
 			break;
 		default:
-			pSBIO->lError = SOLEMICAO_ERROR_UPDATEICAORESULTS_DATAFIELD_INALID;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - updateICAOResults - ERROR DataField Invalid [%d]", iTmp);
+			pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_DATAFIELD_INALID;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - updateICAOResults - ERROR DataField Invalid [%d]", iTmp);
 			goto JMP_updateICAOResults;
 		}
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"SolemICAO - updateICAOResults - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - updateICAOResults - OUT");
 JMP_updateICAOResults:
 	return pSBIO->lError;
 }
 
 
-long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
+long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 {
-	stSolemBioPtr		pSBIO = NULL;
+	stHndBioPtr		pSBIO = NULL;
 	stLoggerPtr			pLogger = NULL;
 
 	unsigned char		aApduHeader[4];
@@ -1957,10 +1947,10 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 	iIsOld = 0;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - IN");
 
 	
 
@@ -1977,7 +1967,7 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 	if (appICAO)
 	{
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - Trying New Chip");
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - Trying New Chip");
 		// Select ID Instance in 2023 Chip
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2008,18 +1998,18 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in New Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in New Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR_RESP;
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in New Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - Trying Old Chip");
+			pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR_RESP;
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in New Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - Trying Old Chip");
 			// Select ID Instance in 2012 Chip
 			memset(aApduHeader, 0, sizeof(aApduHeader));
 			memset(aApduData, 0, sizeof(aApduData));
@@ -2040,16 +2030,16 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in Old Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in Old Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				goto JMP_connectcard;
 			}
 			if (ucSw1 != 0x90 || ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR_RESP;
-				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in Old Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR_RESP;
+				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in Old Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_connectcard;
 			}
 			iIsOld = 1;
@@ -2057,7 +2047,7 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 	}
 	else
 	{
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - Trying New Chip");
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - Trying New Chip");
 		// Select ID Instance in 2023 Chip
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2086,17 +2076,17 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		aApduData[15] = 0x00;
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in New Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in New Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR_RESP;
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in New Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - Trying Old Chip");
+			pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR_RESP;
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in New Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - Trying Old Chip");
 			// Select ID Instance in 2013 Chip
 			memset(aApduHeader, 0, sizeof(aApduHeader));
 			memset(aApduData, 0, sizeof(aApduData));
@@ -2125,16 +2115,16 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			aApduData[15] = 0x44;
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in Old Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in Old Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				goto JMP_connectcard;
 			}
 			if (ucSw1 != 0x90 || ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ID Instance in Old Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in Old Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_connectcard;
 			}
 			iIsOld = 1;
@@ -2143,7 +2133,7 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 	if (iIsOld)
 	{
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Select Master File for 2012 Chip");
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Select Master File for 2012 Chip");
 		// Select Master File for 2012 Chip
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2158,16 +2148,16 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select Master File for 2012 Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select Master File for 2012 Chip [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_SELECT_DIR_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select Master File for 2012 Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_SELECT_DIR_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select Master File for 2012 Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 	}
@@ -2187,14 +2177,14 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 	iApduResponseLen = sizeof(aApduResponse);
 	pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-	if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+	if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARN Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	}
 
 	if (ucSw1 != 0x90 || ucSw2 != 0x00)
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARN Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 	}
 	else
 	{
@@ -2211,13 +2201,13 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Read Binary on Dir [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARN Read Binary on Dir [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Read Binary on Dir Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARN Read Binary on Dir Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 		}
 		else
 		{
@@ -2239,13 +2229,13 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 	aApduData[1] = 0x1C;
 	iApduResponseLen = sizeof(aApduResponse);
 	pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-	if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+	if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Select Card Access [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARN Select Card Access [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	}
 	if (ucSw1 != 0x90 || ucSw2 != 0x00)
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARN Select Card Access Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARN Select Card Access Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 	}
 	else
 	{
@@ -2262,24 +2252,24 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - ERROR Read Binary on Dir CA [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - ERROR Read Binary on Dir CA [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - ERROR Read Binary on Dir CA Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - ERROR Read Binary on Dir CA Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 		}
 		else
 		{
 			// Decode CardAccessData
 #ifdef _DEBUG
-			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - OK Read Binary on Dir CA [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - OK Read Binary on Dir CA [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
 			memcpy_s(EF_CARDACCESS, iCardAccessLen, aApduResponse, iApduResponseLen);
 			iCardAccessLen = iApduResponseLen;
 #ifdef _DEBUG
-			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - CardAccess [%ld]", iCardAccessLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, EF_CARDACCESS, iCardAccessLen);
+			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - CardAccess [%ld]", iCardAccessLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, EF_CARDACCESS, iCardAccessLen);
 #endif
 		}
 	}
@@ -2296,9 +2286,9 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		//	Update ICAO key
 		/////////////////////////////////////////////////////////////////////////
 		// RAFA RAFA RAFA RAFA
-		//if (udateICAOkey(opSICAO) != SOLEMICAO_ERROR_NO_ERROR)
+		//if (udateICAOkey(opSICAO) != ICAO_ERROR_NO_ERROR)
 		//{
-		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		//	goto JMP_connectcard;
 		//}
 		/////////////////////////////////////////////////////////////////////////
@@ -2311,7 +2301,7 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - IcaoKey [%s]", opSICAO->sICAOKey);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - IcaoKey [%s]", opSICAO->sICAOKey);
 #endif
 
 		unsigned char		aKseed[24];
@@ -2322,12 +2312,12 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		pSBIO->lReturn = getHash(NID_sha1, (unsigned char*)opSICAO->sICAOKey, strlen(opSICAO->sICAOKey), aKseed, &iKseedLen, 0);
 		if (pSBIO->lReturn != 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KSEED_HASH;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR get Kseed Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KSEED_HASH;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR get Kseed Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Len Kseed Hash [%ld]", iKseedLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aKseed, iKseedLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Len Kseed Hash [%ld]", iKseedLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aKseed, iKseedLen);
 #endif
 
 		unsigned char		aKM[32];
@@ -2338,12 +2328,12 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		pSBIO->lReturn = getHash(NID_sha256, (unsigned char*)aKseed, iKseedLen + 4, aKM, &iKMLen, 0);
 		if (pSBIO->lReturn != 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_AUTHENTICATE_KSEED_HASH;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR get KM Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_AUTHENTICATE_KSEED_HASH;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR get KM Hash [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Len KM Hash [%ld]", iKMLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aKM, iKMLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Len KM Hash [%ld]", iKMLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aKM, iKMLen);
 #endif
 
 		// Prepare Security Enviroment Data
@@ -2378,31 +2368,31 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			}
 			else
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_WRAP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x83");
+				pSBIO->lError = ICAO_ERROR_CONNETC_WRAP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x83");
 				goto JMP_connectcard;
 			}
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_WRAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x80");
+			pSBIO->lError = ICAO_ERROR_CONNETC_WRAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x80");
 			goto JMP_connectcard;
 		}
 
 		// Request Secure Environemnt MSE
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Secure Environemnt MSE [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Secure Environemnt MSE [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Secure Environemnt MSE Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Secure Environemnt MSE Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 
@@ -2419,8 +2409,8 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		secret = PACE_SEC_new(sMrz, strlen(sMrz), PACE_MRZ);
 		if (secret == NULL)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_SEC_NEW;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_SEC_new");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_SEC_NEW;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_SEC_new");
 			goto JMP_connectcard;
 		}
 
@@ -2432,8 +2422,8 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		pcd_ctx = EAC_CTX_new();
 		if (EAC_CTX_init_ef_cardaccess(EF_CARDACCESS, iCardAccessLen, pcd_ctx) == 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_EAC_INIT_CTX;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR init_ef_cardaccess");
+			pSBIO->lError = ICAO_ERROR_CONNETC_EAC_INIT_CTX;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR init_ef_cardaccess");
 			goto JMP_connectcard;
 		}
 
@@ -2454,20 +2444,20 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		// Request Step 1 General Authentication Negotiation
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 1 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 1 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 1 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 1 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Resp Step 1 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Resp Step 1 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
 
 		unsigned char uTmp[32];
@@ -2477,8 +2467,8 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 		if (PACE_STEP2_dec_nonce(pcd_ctx, secret, enc_nonce) == 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP2;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP2_dec_nonce");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP2;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP2_dec_nonce");
 			goto JMP_connectcard;
 		}
 
@@ -2486,12 +2476,12 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		pcd_mapping_data = PACE_STEP3A_generate_mapping_data(pcd_ctx);
 		if (pcd_mapping_data == NULL)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP3A;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR generate_mapping_data");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP3A;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR generate_mapping_data");
 			goto JMP_connectcard;
 		}
 
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - OK generate_mapping_data len [%ld]", pcd_mapping_data->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - OK generate_mapping_data len [%ld]", pcd_mapping_data->length);
 
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2512,20 +2502,20 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		// Request Step 2 General Authentication Negotiation
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 2 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 2 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 2 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 2 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Resp Step 2 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Resp Step 2 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
 
 		aTag[0] = 0x7C;
@@ -2537,20 +2527,20 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			if (iDataTmp2Len > 0)
 			{
 #ifdef _DEBUG
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Data Unwrap Step 2 [%ld]", iDataTmp2Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataTmp2, iDataTmp2Len);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Data Unwrap Step 2 [%ld]", iDataTmp2Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataTmp2, iDataTmp2Len);
 #endif
 			}
 			else
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_UNWRAP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error unwrapping 0x82 Step 2");
+				pSBIO->lError = ICAO_ERROR_CONNETC_UNWRAP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error unwrapping 0x82 Step 2");
 				goto JMP_connectcard;
 			}
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_UNWRAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error unwrapping 0x7C Step 2");
+			pSBIO->lError = ICAO_ERROR_CONNETC_UNWRAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error unwrapping 0x7C Step 2");
 			goto JMP_connectcard;
 		}
 
@@ -2558,8 +2548,8 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		picc_mapping_data = BUF_MEM_create_init(aDataTmp2, iDataTmp2Len);
 		if (PACE_STEP3A_map_generator(pcd_ctx, picc_mapping_data) == 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP3A_MAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP3A_map_generator");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP3A_MAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP3A_map_generator");
 			goto JMP_connectcard;
 		}
 
@@ -2567,8 +2557,8 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		pcd_ephemeral_pubkey = PACE_STEP3B_generate_ephemeral_key(pcd_ctx);
 		if (pcd_ephemeral_pubkey == NULL)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP3B;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP3B_generate_ephemeral_key");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP3B;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP3B_generate_ephemeral_key");
 			goto JMP_connectcard;
 		}
 
@@ -2587,35 +2577,35 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			iApduDataLen = wrap(aTag, 1, aDataTmp1, iDataTmp1Len, aApduData, sizeof(aApduData));
 			if (iApduDataLen <= 0)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_WRAP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x7C");
+				pSBIO->lError = ICAO_ERROR_CONNETC_WRAP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x7C");
 				goto JMP_connectcard;
 			}
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_WRAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x83");
+			pSBIO->lError = ICAO_ERROR_CONNETC_WRAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x83");
 			goto JMP_connectcard;
 		}
 
 		// Request Step 3 General Authentication Negotiation
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 3 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 3 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 3 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 3 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Resp Step 3 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Resp Step 3 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
 
 		aTag[0] = 0x7C;
@@ -2627,48 +2617,48 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			if (iDataTmp2Len > 0)
 			{
 #ifdef _DEBUG
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Data Unwrap Step 3 [%ld]", iDataTmp2Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataTmp2, iDataTmp2Len);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Data Unwrap Step 3 [%ld]", iDataTmp2Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataTmp2, iDataTmp2Len);
 #endif
 			}
 			else
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_UNWRAP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error unwrapping 0x84 Step 3");
+				pSBIO->lError = ICAO_ERROR_CONNETC_UNWRAP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error unwrapping 0x84 Step 3");
 				goto JMP_connectcard;
 			}
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_UNWRAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error unwrapping 0x7C Step 3");
+			pSBIO->lError = ICAO_ERROR_CONNETC_UNWRAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error unwrapping 0x7C Step 3");
 			goto JMP_connectcard;
 		}
 
 		picc_ephemeral_pubkey = BUF_MEM_create_init(aDataTmp2, iDataTmp2Len);
 		if (PACE_STEP3B_compute_shared_secret(pcd_ctx, picc_ephemeral_pubkey) == 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_BUFF_MEM_INIT;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP3B_compute_shared_secret");
+			pSBIO->lError = ICAO_ERROR_CONNETC_BUFF_MEM_INIT;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP3B_compute_shared_secret");
 			goto JMP_connectcard;
 		}
 
 		// Prepare Step 4
 		if (PACE_STEP3C_derive_keys(pcd_ctx) == 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP3C;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP3B_compute_shared_secret");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP3C;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP3B_compute_shared_secret");
 			goto JMP_connectcard;
 		}
 		pcd_token = PACE_STEP3D_compute_authentication_token(pcd_ctx, picc_ephemeral_pubkey);
 		if (pcd_token == NULL)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP3D;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP3D_compute_authentication_token");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP3D;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP3D_compute_authentication_token");
 			goto JMP_connectcard;
 		}
 
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Data pcd_token [%ld]", pcd_token->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, pcd_token->data, pcd_token->length);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Data pcd_token [%ld]", pcd_token->length); DisplayHex(pLogger, LOG_LEVEL_DEBUG, pcd_token->data, pcd_token->length);
 #endif
 
 		// Prepare Step 4 General Authentication Negotiation Data
@@ -2687,40 +2677,40 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			iApduDataLen = wrap(aTag, 1, aDataTmp1, iDataTmp1Len, aApduData, sizeof(aApduData));
 			if (iApduDataLen <= 0)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_WRAP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x7C step 4");
+				pSBIO->lError = ICAO_ERROR_CONNETC_WRAP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x7C step 4");
 				goto JMP_connectcard;
 			}
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_WRAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x83 step 4");
+			pSBIO->lError = ICAO_ERROR_CONNETC_WRAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x83 step 4");
 			goto JMP_connectcard;
 		}
 
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Data Wrap pcd_token [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduData, iApduDataLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Data Wrap pcd_token [%ld]", iApduDataLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduData, iApduDataLen);
 #endif
 
 		// Request Step 4 General Authentication Negotiation
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 4 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 4 General Authentication Negotiation [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_READ_BIN_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Request Step 4 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CONNETC_READ_BIN_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Request Step 4 General Authentication Negotiation Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 
 #ifdef _DEBUG
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Resp Request Step 4 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Resp Request Step 4 General Authentication Negotiation [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
 #endif
 
 		aTag[0] = 0x7C;
@@ -2732,36 +2722,36 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 			if (iDataTmp2Len > 0)
 			{
 #ifdef _DEBUG
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - ConnectCard - Data Unwrap Step 4 [%ld]", iDataTmp2Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataTmp2, iDataTmp2Len);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Data Unwrap Step 4 [%ld]", iDataTmp2Len); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aDataTmp2, iDataTmp2Len);
 #endif
 			}
 			else
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_CONNETC_UNWRAP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error unwrapping 0x86 Step 4");
+				pSBIO->lError = ICAO_ERROR_CONNETC_UNWRAP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error unwrapping 0x86 Step 4");
 				goto JMP_connectcard;
 			}
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_UNWRAP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error unwrapping 0x7C Step 4");
+			pSBIO->lError = ICAO_ERROR_CONNETC_UNWRAP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error unwrapping 0x7C Step 4");
 			goto JMP_connectcard;
 		}
 
 		picc_token = BUF_MEM_create_init(aDataTmp2, iDataTmp2Len);
 		if (PACE_STEP3D_verify_authentication_token(pcd_ctx, picc_token) != 1)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_PACE_STEP3D_VERIF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR PACE_STEP3D_verify_authentication_token");
+			pSBIO->lError = ICAO_ERROR_CONNETC_PACE_STEP3D_VERIF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR PACE_STEP3D_verify_authentication_token");
 			goto JMP_connectcard;
 		}
 
 		// Set encryption
 		if (EAC_CTX_set_encryption_ctx(pcd_ctx, EAC_ID_PACE) == 0)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CONNETC_EAC_SET_CTX;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR EAC_CTX_set_encryption_ctx");
+			pSBIO->lError = ICAO_ERROR_CONNETC_EAC_SET_CTX;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR EAC_CTX_set_encryption_ctx");
 			goto JMP_connectcard;
 		}
 
@@ -2784,16 +2774,16 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitSecureApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_SELECT_APP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ICAO App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETFINGERREF_SELECT_APP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ICAO App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				goto JMP_connectcard;
 			}
 			if (ucSw1 != 0x90 || ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_SELECT_APP_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select ICAO App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETFINGERREF_SELECT_APP_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ICAO App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_connectcard;
 			}
 		}
@@ -2804,9 +2794,9 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 		//	Update ICAO key
 		///////////////////////////////////////////////////////////////////////
 		// RAFA RAFA RAFA 
-		//if (udateICAOkey(opSICAO) != SOLEMICAO_ERROR_NO_ERROR)
+		//if (udateICAOkey(opSICAO) != ICAO_ERROR_NO_ERROR)
 		//{
-		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		//	goto JMP_connectcard; poto
 		//}
 		///////////////////////////////////////////////////////////////////////
@@ -2830,22 +2820,22 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_SELECT_APP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_SELECT_APP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_SELECT_APP_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_SELECT_APP_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 
 		if (iApduResponseLen > 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - ConnectCard - WARNING Select App Resp [%ld]", iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARNING Select App Resp [%ld]", iApduResponseLen);
 		}
 
 		// cmd GET CHALLENGE 0x00, 0x84, 0x00, 0x00
@@ -2858,32 +2848,32 @@ long ConnectCard(stSolemICAOPtr opSICAO, void* pDev, int appICAO)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 8, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_GETCHALLENGE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Get Challenge [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_GETCHALLENGE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Get Challenge [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_GETCHALLENGE_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Get Challenge Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_GETCHALLENGE_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Get Challenge Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 		if (iApduResponseLen != 8)
 		{
 			pSBIO->lReturn = iApduResponseLen;
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_GETCHALLENGE_RESP_LEN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_GETCHALLENGE_RESP_LEN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 
 		// Authenticate With ICAO SmartCard
 		pSBIO->lReturn = authenticate(opSICAO, pDev, aApduResponse, iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_AUTHENTICATE;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - ERROR Authenticate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_AUTHENTICATE;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Authenticate [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
 	}
@@ -2908,14 +2898,14 @@ JMP_connectcard:
 	if (picc_token)
 		BUF_MEM_free(picc_token);
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - ConnectCard - OUT [%ld]", pSBIO->lError);
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - OUT [%ld]", pSBIO->lError);
 
 	return pSBIO->lError;
 }
 
-static int getIcao(stSolemICAOPtr opSICAO, void *pDev)
+static int getIcao(sHndICAOPtr opSICAO, void *pDev)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 unsigned char		aApduHeader[4];
@@ -2936,38 +2926,38 @@ int					iAuthBugRetryCount = 0;
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char*)"SolemICAO - getIcao - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char*)"ICAO - getIcao - IN");
 
 JMP_AuthBugRetry:
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	//mutex_lock(opSICAO->oMutex);
 
 	if (!opSICAO->iGetICAO)
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - getIcao - WARNING No ICAO Data Requested");
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - getIcao - WARNING No ICAO Data Requested");
 		goto JMP_getIcao;
 	}
 
 	// Connect Card
-	if (ConnectCard(opSICAO, pDev, 1) != SOLEMICAO_ERROR_NO_ERROR)
+	if (ConnectCard(opSICAO, pDev, 1) != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - Capture - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - Capture - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		// Check for ICAO Authentication errors:
 		switch (pSBIO->lError)
 		{
-		case SOLEMICAO_ERROR_GETICAO_SELECT_APP:
-		case SOLEMICAO_ERROR_GETICAO_SELECT_APP_RESP:
-		case SOLEMICAO_ERROR_GETICAO_GETCHALLENGE:
-		case SOLEMICAO_ERROR_GETICAO_GETCHALLENGE_RESP:
-		case SOLEMICAO_ERROR_GETICAO_GETCHALLENGE_RESP_LEN:
-		case SOLEMICAO_ERROR_GETICAO_AUTHENTICATE:
+		case ICAO_ERROR_GETICAO_SELECT_APP:
+		case ICAO_ERROR_GETICAO_SELECT_APP_RESP:
+		case ICAO_ERROR_GETICAO_GETCHALLENGE:
+		case ICAO_ERROR_GETICAO_GETCHALLENGE_RESP:
+		case ICAO_ERROR_GETICAO_GETCHALLENGE_RESP_LEN:
+		case ICAO_ERROR_GETICAO_AUTHENTICATE:
 			if (iAuthBugRetryCount < ICAO_AUTH_BUG_RETRY)
 			{
 				iAuthBugRetryCount++;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR ICAO Auth Connect [%ld][%ld]... Retry [%ld]", pSBIO->lReturn, pSBIO->lError, iAuthBugRetryCount);
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR ICAO Auth Connect [%ld][%ld]... Retry [%ld]", pSBIO->lReturn, pSBIO->lError, iAuthBugRetryCount);
 				goto JMP_AuthBugRetry;
 			}
 			break;
@@ -2978,7 +2968,7 @@ JMP_AuthBugRetry:
 	}
 
 
-	for (iTmp = 0; iTmp < SOLEMICAO_DATAGROUP_MAX; iTmp++)
+	for (iTmp = 0; iTmp < ICAO_DATAGROUP_MAX; iTmp++)
 	{
 		if (!opSICAO->aCaptureDG[iTmp])
 		{
@@ -2996,97 +2986,97 @@ JMP_AuthBugRetry:
 		//aApduData[1] = 0x1E;
 		switch (iTmp)
 		{
-		case SOLEMICAO_DATAGROUP_COM:
+		case ICAO_DATAGROUP_COM:
 			aApduData[1] = 0x1E;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_COM);
 			ucpDGxData = opSICAO->aDoc_DG_COM;
 			ipDGxOffset = &opSICAO->iDoc_DG_COMLen;
 			break;
-		case SOLEMICAO_DATAGROUP_1:
+		case ICAO_DATAGROUP_1:
 			aApduData[1] = 0x01;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_1);
 			ucpDGxData = opSICAO->aDoc_DG_1;
 			ipDGxOffset = &opSICAO->iDoc_DG_1Len;
 			break;
-		case SOLEMICAO_DATAGROUP_2:
+		case ICAO_DATAGROUP_2:
 			aApduData[1] = 0x02;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_2);
 			ucpDGxData = opSICAO->aDoc_DG_2;
 			ipDGxOffset = &opSICAO->iDoc_DG_2Len;
 			break;
-		case SOLEMICAO_DATAGROUP_3:
+		case ICAO_DATAGROUP_3:
 			aApduData[1] = 0x03;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_3);
 			ucpDGxData = opSICAO->aDoc_DG_3;
 			ipDGxOffset = &opSICAO->iDoc_DG_3Len;
 			break;
-		case SOLEMICAO_DATAGROUP_4:
+		case ICAO_DATAGROUP_4:
 			aApduData[1] = 0x04;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_4);
 			ucpDGxData = opSICAO->aDoc_DG_4;
 			ipDGxOffset = &opSICAO->iDoc_DG_4Len;
 			break;
-		case SOLEMICAO_DATAGROUP_5:
+		case ICAO_DATAGROUP_5:
 			aApduData[1] = 0x05;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_5);
 			ucpDGxData = opSICAO->aDoc_DG_5;
 			ipDGxOffset = &opSICAO->iDoc_DG_5Len;
 			break;
-		case SOLEMICAO_DATAGROUP_6:
+		case ICAO_DATAGROUP_6:
 			aApduData[1] = 0x06;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_6);
 			ucpDGxData = opSICAO->aDoc_DG_6;
 			ipDGxOffset = &opSICAO->iDoc_DG_6Len;
 			break;
-		case SOLEMICAO_DATAGROUP_7:
+		case ICAO_DATAGROUP_7:
 			aApduData[1] = 0x07;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_7);
 			ucpDGxData = opSICAO->aDoc_DG_7;
 			ipDGxOffset = &opSICAO->iDoc_DG_7Len;
 			break;
-		case SOLEMICAO_DATAGROUP_8:
+		case ICAO_DATAGROUP_8:
 			aApduData[1] = 0x08;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_8);
 			ucpDGxData = opSICAO->aDoc_DG_8;
 			ipDGxOffset = &opSICAO->iDoc_DG_8Len;
 			break;
-		case SOLEMICAO_DATAGROUP_9:
+		case ICAO_DATAGROUP_9:
 			aApduData[1] = 0x09;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_9);
 			ucpDGxData = opSICAO->aDoc_DG_9;
 			ipDGxOffset = &opSICAO->iDoc_DG_9Len;
 			break;
-		case SOLEMICAO_DATAGROUP_10:
+		case ICAO_DATAGROUP_10:
 			aApduData[1] = 0x0A;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_10);
 			ucpDGxData = opSICAO->aDoc_DG_10;
 			ipDGxOffset = &opSICAO->iDoc_DG_10Len;
 			break;
-		case SOLEMICAO_DATAGROUP_11:
+		case ICAO_DATAGROUP_11:
 			aApduData[1] = 0x0B;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_11);
 			ucpDGxData = opSICAO->aDoc_DG_11;
 			ipDGxOffset = &opSICAO->iDoc_DG_11Len;
 			break;
-		case SOLEMICAO_DATAGROUP_12:
+		case ICAO_DATAGROUP_12:
 			aApduData[1] = 0x0C;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_12);
 			ucpDGxData = opSICAO->aDoc_DG_12;
 			ipDGxOffset = &opSICAO->iDoc_DG_12Len;
 			break;
-		case SOLEMICAO_DATAGROUP_13:
+		case ICAO_DATAGROUP_13:
 			aApduData[1] = 0x0D;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_13);
 			ucpDGxData = opSICAO->aDoc_DG_13;
 			ipDGxOffset = &opSICAO->iDoc_DG_13Len;
 			break;
-		case SOLEMICAO_DATAGROUP_14:
+		case ICAO_DATAGROUP_14:
 			aApduData[1] = 0x0E;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_14);
 			ucpDGxData = opSICAO->aDoc_DG_14;
 			ipDGxOffset = &opSICAO->iDoc_DG_14Len;
 			break;
-		case SOLEMICAO_DATAGROUP_15:
+		case ICAO_DATAGROUP_15:
 			aApduData[1] = 0x0F;
 			iDGxSize = sizeof(opSICAO->aDoc_DG_15);
 			ucpDGxData = opSICAO->aDoc_DG_15;
@@ -3101,20 +3091,20 @@ JMP_AuthBugRetry:
 		iApduResponseLen = sizeof(aApduResponse);
 		memset(aApduResponse, 0, iApduResponseLen);
 		pSBIO->lReturn = transmitSecureApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_SELECTDG;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Select DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_SELECTDG;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Select DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getIcao;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_SELECTDG_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Select DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_SELECTDG_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Select DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getIcao;
 		}
 
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - getIcao - Select DG OK [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getIcao - Select DG OK [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
 
 		// cmd Binary READ 0x00, 0xB0, 0x00, 0x00
 		aApduHeader[0] = 0x00;
@@ -3126,26 +3116,26 @@ JMP_AuthBugRetry:
 		iApduResponseLen = sizeof(aApduResponse);
 		memset(aApduResponse, 0, iApduResponseLen);
 		pSBIO->lReturn = transmitSecureApdu(opSICAO, pDev, aApduHeader, 0, NULL, 4, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_READDG;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getIcao;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_READDG_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getIcao;
 		}
 		if (iApduResponseLen != 4)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_RESP_LEN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Resp Length (init) [%ld][%ld][%ld]", iTmp, iApduResponseLen, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_READDG_RESP_LEN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Resp Length (init) [%ld][%ld][%ld]", iTmp, iApduResponseLen, pSBIO->lError);
 			goto JMP_getIcao;
 		}
 
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - getIcao - Read DG OK [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getIcao - Read DG OK [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
 
 		if ((aApduResponse[1] & 0xF0) == 0x80)
 		{
@@ -3159,8 +3149,8 @@ JMP_AuthBugRetry:
 
 		if (iDGxLen > iDGxSize)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_OVERFLOW;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Length Too Large [%ld][%ld/%ld][%ld]", iTmp, iDGxLen, iDGxSize, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETICAO_READDG_OVERFLOW;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Length Too Large [%ld][%ld/%ld][%ld]", iTmp, iDGxLen, iDGxSize, pSBIO->lError);
 			goto JMP_getIcao;
 		}
 
@@ -3168,7 +3158,7 @@ JMP_AuthBugRetry:
 		memset(ucpDGxData, 0, iDGxSize);
 		while (*ipDGxOffset + ICAO_READ_CHUNK <= iDGxLen)
 		{
-			//PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"SolemICAO - getIcao - IN WHILE Read DG [%ld][%ld][%ld]", *ipDGxOffset, *ipDGxOffset + ICAO_READ_CHUNK, iDGxLen);
+			//PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"ICAO - getIcao - IN WHILE Read DG [%ld][%ld][%ld]", *ipDGxOffset, *ipDGxOffset + ICAO_READ_CHUNK, iDGxLen);
 			// cmd Binary READ 0x00, 0xB0, 0x00, 0x00
 			aApduHeader[0] = 0x00;
 			aApduHeader[1] = 0xB0;
@@ -3179,22 +3169,22 @@ JMP_AuthBugRetry:
 			iApduResponseLen = sizeof(aApduResponse);
 			memset(aApduResponse, 0, iApduResponseLen);
 			pSBIO->lReturn = transmitSecureApdu(opSICAO, pDev, aApduHeader, 0, NULL, ICAO_READ_CHUNK, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETICAO_READDG;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
 				goto JMP_getIcao;
 			}
 			if (ucSw1 != 0x90 || ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETICAO_READDG_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_getIcao;
 			}
 			if (iApduResponseLen != ICAO_READ_CHUNK)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_RESP_LEN;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Resp Length (chunk) [%ld][%ld/%ld][%ld]", iTmp, ICAO_READ_CHUNK, iApduResponseLen, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETICAO_READDG_RESP_LEN;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Resp Length (chunk) [%ld][%ld/%ld][%ld]", iTmp, ICAO_READ_CHUNK, iApduResponseLen, pSBIO->lError);
 				goto JMP_getIcao;
 			}
 
@@ -3205,7 +3195,7 @@ JMP_AuthBugRetry:
 
 		if (iDGxLen % ICAO_READ_CHUNK > 0)
 		{
-			//PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"SolemICAO - OUT WHILE Read DG [%ld][%ld][%ld]", *ipDGxOffset, *ipDGxOffset + ICAO_READ_CHUNK, iDGxLen);
+			//PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"ICAO - OUT WHILE Read DG [%ld][%ld][%ld]", *ipDGxOffset, *ipDGxOffset + ICAO_READ_CHUNK, iDGxLen);
 			// cmd Binary READ 0x00, 0xB0, 0x00, 0x00
 			aApduHeader[0] = 0x00;
 			aApduHeader[1] = 0xB0;
@@ -3216,22 +3206,22 @@ JMP_AuthBugRetry:
 			iApduResponseLen = sizeof(aApduResponse);
 			memset(aApduResponse, 0, iApduResponseLen);
 			pSBIO->lReturn = transmitSecureApdu(opSICAO, pDev, aApduHeader, 0, NULL, iDGxLen % ICAO_READ_CHUNK, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETICAO_READDG;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG [%ld][%ld][%ld]", iTmp, pSBIO->lReturn, pSBIO->lError);
 				goto JMP_getIcao;
 			}
 			if (ucSw1 != 0x90 || ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETICAO_READDG_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Resp [%ld][%02x:%02x][%ld]", iTmp, ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_getIcao;
 			}
 			if (iApduResponseLen != iDGxLen % ICAO_READ_CHUNK)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG_RESP_LEN;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Read DG Resp Length (last chunk) [%ld][%ld/%ld][%ld]", iTmp, iApduResponseLen, iDGxLen % ICAO_READ_CHUNK, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETICAO_READDG_RESP_LEN;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Read DG Resp Length (last chunk) [%ld][%ld/%ld][%ld]", iTmp, iApduResponseLen, iDGxLen % ICAO_READ_CHUNK, pSBIO->lError);
 				goto JMP_getIcao;
 			}
 
@@ -3250,38 +3240,38 @@ JMP_AuthBugRetry:
 
 	iApduResponseLen = sizeof(aApduResponse);
 	pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 8, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-	if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+	if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 	{
-		//pSBIO->lError = SOLEMICAO_ERROR_GETICAO_GETCHALLENGE;
-		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - getIcao - ERROR Get Challenge [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getIcao - DEBUG Get Challenge [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		//pSBIO->lError = ICAO_ERROR_GETICAO_GETCHALLENGE;
+		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - getIcao - ERROR Get Challenge [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getIcao - DEBUG Get Challenge [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		//goto JMP_getIcao;
 	}
 	if (ucSw1 != 0x90 || ucSw2 != 0x00)
 	{
-		//pSBIO->lError = SOLEMICAO_ERROR_GETICAO_GETCHALLENGE_RESP;
-		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - getIcao - ERROR Get Challenge Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getIcao - DEBUG Get Challenge Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+		//pSBIO->lError = ICAO_ERROR_GETICAO_GETCHALLENGE_RESP;
+		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - getIcao - ERROR Get Challenge Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getIcao - DEBUG Get Challenge Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 		//goto JMP_getIcao;
 	}
 	if (iApduResponseLen != 8)
 	{
 		pSBIO->lReturn = iApduResponseLen;
-		//pSBIO->lError = SOLEMICAO_ERROR_GETICAO_GETCHALLENGE_RESP_LEN;
-		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - getIcao - ERROR Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getIcao - DEBUG Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		//pSBIO->lError = ICAO_ERROR_GETICAO_GETCHALLENGE_RESP_LEN;
+		//PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - getIcao - ERROR Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getIcao - DEBUG Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		//goto JMP_getIcao;
 	}
 
 	pSBIO->lReturn = updateICAOResults(opSICAO);
-	if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+	if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_GETICAO_READDG;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getIcao - ERROR Update ICAO Results [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_GETICAO_READDG;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getIcao - ERROR Update ICAO Results [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getIcao;
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getIcao - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getIcao - OUT");
 
 JMP_getIcao:
 	//mutex_unlock(opSICAO->oMutex);
@@ -3289,9 +3279,9 @@ JMP_getIcao:
 	return pSBIO->lError;
 }
 
-static int getFingerRef(stSolemICAOPtr opSICAO, void *pDev)
+static int getFingerRef(sHndICAOPtr opSICAO, void *pDev)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 unsigned char		aApduHeader[4];
@@ -3309,8 +3299,8 @@ unsigned char		ucTmp;
 int					iTmp;
 int					iFingerRef;
 
-int					iFingerRef1 = SOLEMBIO_FINGER_NONE;
-int					iFingerRef2 = SOLEMBIO_FINGER_NONE;
+int					iFingerRef1 = BIO_FINGER_NONE;
+int					iFingerRef2 = BIO_FINGER_NONE;
 
 int					iFingerRef1TriesLeft = -1;
 int					iFingerRef2TriesLeft = -1;
@@ -3320,24 +3310,24 @@ int					iNoFingerBugAttempts = 3;
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - getFingerRef - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - getFingerRef - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	//mutex_lock(opSICAO->oMutex);
 
 	if(!opSICAO->iGetFinger)
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"SolemICAO - getFingerRef - WARNING No Finger Requested");
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"ICAO - getFingerRef - WARNING No Finger Requested");
 		goto JMP_getFingerRef;
 	}
 
 
 	// Connect Card
-	if (ConnectCard(opSICAO, pDev, 0) != SOLEMICAO_ERROR_NO_ERROR)
+	if (ConnectCard(opSICAO, pDev, 0) != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - Capture - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - Capture - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getFingerRef;
 	}
 
@@ -3371,22 +3361,22 @@ JMP_NO_FINGER_BUG:
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_SELECT_APP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETFINGERREF_SELECT_APP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getFingerRef;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_SELECT_APP_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETFINGERREF_SELECT_APP_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getFingerRef;
 		}
 
 		if (iApduResponseLen > 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - getFingerRef - WARNING Select App Resp [%ld]", iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - getFingerRef - WARNING Select App Resp [%ld]", iApduResponseLen);
 		}
 
 		// {0x00, 0xCB, 0x3F, 0xFF, 0x0E, 0x4D, 0x0C, 0x70, 0x0A, 0xBF, 0x82, 0xXX, 0x06, 0x7F, 0x50, 0x03, 0x7F, 0x60, 0x80} 0xXX / 0x11 / 0x12
@@ -3412,7 +3402,7 @@ JMP_NO_FINGER_BUG:
 		aApduData[12] = 0x60;
 		aApduData[13] = 0x80;
 
-		//if(opSICAO->aCaptureField[SOLEMBIO_DATAFIELD_DOC_FINGERID_1])
+		//if(opSICAO->aCaptureField[BIO_DATAFIELD_DOC_FINGERID_1])
 		for (iFingerRef = 1; iFingerRef <= 2; iFingerRef++)
 		{
 			switch (iFingerRef)
@@ -3427,10 +3417,10 @@ JMP_NO_FINGER_BUG:
 
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_GETDATA1;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Get Finger %d [%ld][%ld]", iFingerRef, pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETFINGERREF_GETDATA1;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Get Finger %d [%ld][%ld]", iFingerRef, pSBIO->lReturn, pSBIO->lError);
 				goto JMP_getFingerRef;
 			}
 
@@ -3439,18 +3429,18 @@ JMP_NO_FINGER_BUG:
 				switch (iFingerRef)
 				{
 				case 1:
-					iFingerRef1 = SOLEMBIO_FINGER_NONE;
+					iFingerRef1 = BIO_FINGER_NONE;
 					break;
 				case 2:
-					iFingerRef2 = SOLEMBIO_FINGER_NONE;
+					iFingerRef2 = BIO_FINGER_NONE;
 					break;
 				}
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - getFingerRef - DEBUG Finger %d None", iFingerRef);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getFingerRef - DEBUG Finger %d None", iFingerRef);
 			}
 			else if (ucSw1 != 0x90 && ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_GETDATA1_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Get Finger %d Response [%02x][%02x][%ld][%ld]", iFingerRef, ucSw1, ucSw2, iApduResponseLen, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETFINGERREF_GETDATA1_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Get Finger %d Response [%02x][%02x][%ld][%ld]", iFingerRef, ucSw1, ucSw2, iApduResponseLen, pSBIO->lError);
 				//goto JMP_getFingerRef;
 			}
 			else //if(ucSw1 == 0x90 && ucSw2 == 0x00)
@@ -3481,17 +3471,17 @@ JMP_NO_FINGER_BUG:
 											iFingerRef2 = iTmp;
 											break;
 										}
-										PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - getFingerRef - DEBUG Finger %d found [%ld]", iFingerRef, iTmp);
-										//	SOLEMBIO_FINGER_RT = 1,	//5,
-										//	SOLEMBIO_FINGER_RI = 2,	//9,
-										//	SOLEMBIO_FINGER_RM = 3,	//13,
-										//	SOLEMBIO_FINGER_RR = 4,	//17,
-										//	SOLEMBIO_FINGER_RL = 5,	//21,
-										//	SOLEMBIO_FINGER_LT = 6,	//6,
-										//	SOLEMBIO_FINGER_LI = 7,	//10,
-										//	SOLEMBIO_FINGER_LM = 8,	//14,
-										//	SOLEMBIO_FINGER_LR = 9,	//18,
-										//	SOLEMBIO_FINGER_LL = 10,//22,
+										PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getFingerRef - DEBUG Finger %d found [%ld]", iFingerRef, iTmp);
+										//	BIO_FINGER_RT = 1,	//5,
+										//	BIO_FINGER_RI = 2,	//9,
+										//	BIO_FINGER_RM = 3,	//13,
+										//	BIO_FINGER_RR = 4,	//17,
+										//	BIO_FINGER_RL = 5,	//21,
+										//	BIO_FINGER_LT = 6,	//6,
+										//	BIO_FINGER_LI = 7,	//10,
+										//	BIO_FINGER_LM = 8,	//14,
+										//	BIO_FINGER_LR = 9,	//18,
+										//	BIO_FINGER_LL = 10,//22,
 										//	iFingerRef = aApduResponse[19];
 									}
 								}
@@ -3522,17 +3512,17 @@ JMP_NO_FINGER_BUG:
 
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)0, NULL, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_GETDATA1;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Get Finger %d [%ld][%ld]", iFingerRef, pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETFINGERREF_GETDATA1;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Get Finger %d [%ld][%ld]", iFingerRef, pSBIO->lReturn, pSBIO->lError);
 				goto JMP_getFingerRef;
 			}
 
 			else if (ucSw1 != 0x63 || (ucSw2 & 0xF0) != 0xC0)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_GETDATA1_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Get Finger %d Response [%02x][%02x][%ld][%ld]", iFingerRef, ucSw1, ucSw2, iApduResponseLen, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_GETFINGERREF_GETDATA1_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Get Finger %d Response [%02x][%02x][%ld][%ld]", iFingerRef, ucSw1, ucSw2, iApduResponseLen, pSBIO->lError);
 				//goto JMP_getFingerRef;
 			}
 			else
@@ -3542,30 +3532,30 @@ JMP_NO_FINGER_BUG:
 				{
 				case 1:
 					iFingerRef1TriesLeft = iTmp;
-					pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT, SOLEMBIO_DATAFIELDPROP_NONE, NULL, iFingerRef1TriesLeft);
-					if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef1TriesLeft);
+					if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 					{
-						pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
-						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR PutData Finger 1 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, iFingerRef1TriesLeft);
-						pSBIO->lReturn = SOLEMBIO_ERROR_NO_ERROR;
-						pSBIO->lError = SOLEMBIO_ERROR_NO_ERROR;
+						pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
+						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 1 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, iFingerRef1TriesLeft);
+						pSBIO->lReturn = BIO_ERROR_NO_ERROR;
+						pSBIO->lError = BIO_ERROR_NO_ERROR;
 						//goto JMP_getFingerRef;
 					}
 					break;
 				case 2:
 					iFingerRef2TriesLeft = iTmp;
-					pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT, SOLEMBIO_DATAFIELDPROP_NONE, NULL, iFingerRef2TriesLeft);
-					if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef2TriesLeft);
+					if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 					{
-						pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_PUTDATA_FINGER2;
-						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR PutData Finger 2 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, iFingerRef2TriesLeft);
-						pSBIO->lReturn = SOLEMBIO_ERROR_NO_ERROR;
-						pSBIO->lError = SOLEMBIO_ERROR_NO_ERROR;
+						pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER2;
+						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 2 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, iFingerRef2TriesLeft);
+						pSBIO->lReturn = BIO_ERROR_NO_ERROR;
+						pSBIO->lError = BIO_ERROR_NO_ERROR;
 						//goto JMP_getFingerRef;
 					}
 					break;
 				}
-				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SolemICAO - getFingerRef - DEBUG Finger %d tries left [%ld]", iFingerRef, iTmp);
+				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getFingerRef - DEBUG Finger %d tries left [%ld]", iFingerRef, iTmp);
 			}
 		}
 	}
@@ -3583,24 +3573,24 @@ JMP_NO_FINGER_BUG:
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitSecureApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_SELECT_APP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Read Bit [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETFINGERREF_SELECT_APP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Read Bit [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getFingerRef;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_SELECT_APP_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR Read Bit Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETFINGERREF_SELECT_APP_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR Read Bit Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getFingerRef;
 		}
 
 		char seachTemplate = 0;
 		int Template1 = 0;
 		int Template2 = 0;
-		int iFinger1 = SOLEMBIO_FINGER_NONE;
-		int iFinger2 = SOLEMBIO_FINGER_NONE;
+		int iFinger1 = BIO_FINGER_NONE;
+		int iFinger2 = BIO_FINGER_NONE;
 		for (int Index = 0; Index < iApduResponseLen; Index++)
 		{
 			if (aApduResponse[Index] == 0x7F)
@@ -3642,71 +3632,71 @@ JMP_NO_FINGER_BUG:
 		{
 			iFinger2 >>= 2;
 			if (iFinger2 < 1 || iFinger2 > 5)
-				iFinger2 = SOLEMBIO_FINGER_NONE;
+				iFinger2 = BIO_FINGER_NONE;
 		}
 		else if ((iFinger2 & 0x02) != 0)
 		{
 			iFinger2 >>= 2;
 			iFinger2 += 5;
 			if (iFinger2 < 6 || iFinger2 > 10)
-				iFinger2 = SOLEMBIO_FINGER_NONE;
+				iFinger2 = BIO_FINGER_NONE;
 		}
 
 		if ((iFinger1 & 0x01) != 0)
 		{
 			iFinger1 >>= 2;
 			if (iFinger1 < 1 || iFinger1 > 5)
-				iFinger1 = SOLEMBIO_FINGER_NONE;
+				iFinger1 = BIO_FINGER_NONE;
 		}
 		else if ((iFinger1 & 0x02) != 0)
 		{
 			iFinger1 >>= 2;
 			iFinger1 += 5;
 			if (iFinger1 < 6 || iFinger1 > 10)
-				iFinger1 = SOLEMBIO_FINGER_NONE;
+				iFinger1 = BIO_FINGER_NONE;
 		}
 
 		iFingerRef1 = iFinger1;
 		iFingerRef2 = iFinger2;
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getFingerRef - Fingers found [%ld][%ld]", iFingerRef1, iFingerRef2);
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getFingerRef - Fingers found [%ld][%ld]", iFingerRef1, iFingerRef2);
 
 		}
 	
 
-	if (iFingerRef1 == SOLEMBIO_FINGER_NONE && iFingerRef2 == SOLEMBIO_FINGER_NONE && iNoFingerBugAttempts > 0)
+	if (iFingerRef1 == BIO_FINGER_NONE && iFingerRef2 == BIO_FINGER_NONE && iNoFingerBugAttempts > 0)
 	{
 		iNoFingerBugAttempts--;
 		goto JMP_NO_FINGER_BUG;
 	}
-	else if (iFingerRef1 == SOLEMBIO_FINGER_NONE && iFingerRef2 == SOLEMBIO_FINGER_NONE)
+	else if (iFingerRef1 == BIO_FINGER_NONE && iFingerRef2 == BIO_FINGER_NONE)
 	{
-		pSBIO->lError = SOLEMBIO_ERROR_NO_DATA_AVAILABLE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR No data available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = BIO_ERROR_NO_DATA_AVAILABLE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR No data available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getFingerRef;
 	}
 	else
 	{
-		pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_FINGERID_1, SOLEMBIO_DATAFIELDPROP_NONE, NULL, iFingerRef1);
-		if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_1, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef1);
+		if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR PutData Finger 1 [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-			pSBIO->lReturn = SOLEMBIO_ERROR_NO_ERROR;
-			pSBIO->lError = SOLEMBIO_ERROR_NO_ERROR;
+			pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 1 [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lReturn = BIO_ERROR_NO_ERROR;
+			pSBIO->lError = BIO_ERROR_NO_ERROR;
 			//goto JMP_getFingerRef;
 		}
-		pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_FINGERID_2, SOLEMBIO_DATAFIELDPROP_NONE, NULL, iFingerRef2);
-		if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_2, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef2);
+		if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getFingerRef - ERROR PutData Finger 2 [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-			pSBIO->lReturn = SOLEMBIO_ERROR_NO_ERROR;
-			pSBIO->lError = SOLEMBIO_ERROR_NO_ERROR;
+			pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 2 [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lReturn = BIO_ERROR_NO_ERROR;
+			pSBIO->lError = BIO_ERROR_NO_ERROR;
 			//goto JMP_getFingerRef;
 		}
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - getFingerRef - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - getFingerRef - OUT");
 
 JMP_getFingerRef:
 	//mutex_unlock(opSICAO->oMutex);
@@ -3714,9 +3704,9 @@ JMP_getFingerRef:
 	return pSBIO->lError;
 }
 
-static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
+static int getDocumentNumber(sHndICAOPtr opSICAO, void *pDev)
 {
-	stSolemBioPtr		pSBIO = NULL;
+	stHndBioPtr		pSBIO = NULL;
 	stLoggerPtr			pLogger = NULL;
 
 	unsigned char		aApduHeader[4];
@@ -3734,24 +3724,24 @@ static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - getDocumentNumber - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - getDocumentNumber - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	//mutex_lock(opSICAO->oMutex);
 
-	if (!opSICAO->aCaptureField[SOLEMBIO_DATAFIELD_DOC_SERIAL])	//opSICAO->aCaptureField[SOLEMBIO_DATAFIELD_DOC_DOCUMENT]
+	if (!opSICAO->aCaptureField[BIO_DATAFIELD_DOC_SERIAL])	//opSICAO->aCaptureField[BIO_DATAFIELD_DOC_DOCUMENT]
 	{
-		PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"SolemICAO - getDocumentNumber - WARNING No Serial Number requested");
+		PutInLog(pLogger, LOG_LEVEL_WARNING, (char *)"ICAO - getDocumentNumber - WARNING No Serial Number requested");
 		goto JMP_getDocumentNumber;
 	}
 
 	// Connect Card
-	if (ConnectCard(opSICAO, pDev, 0) != SOLEMICAO_ERROR_NO_ERROR)
+	if (ConnectCard(opSICAO, pDev, 0) != ICAO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT_APP;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT_APP;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_getDocumentNumber;
 	}
 
@@ -3783,22 +3773,22 @@ static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT_APP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT_APP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT_APP_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT_APP_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 
 		if (iApduResponseLen > 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - getDocumentNumber - WARNING Select App Resp [%ld]", iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - getDocumentNumber - WARNING Select App Resp [%ld]", iApduResponseLen);
 		}
 
 		// cmd SELECT 0x00,0xA4,0x00,0x0C
@@ -3813,22 +3803,22 @@ static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT_MF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Select MF [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT_MF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Select MF [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT_MF_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Select MF Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT_MF_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Select MF Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 
 		if (iApduResponseLen > 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - getDocumentNumber - WARNING Select MF Resp [%ld]", iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - getDocumentNumber - WARNING Select MF Resp [%ld]", iApduResponseLen);
 		}
 
 		// cmd SELECT 0x00,0xA4,0x02,0x0C
@@ -3843,22 +3833,22 @@ static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Select File [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Select File [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_SELECT_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Select File Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_SELECT_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Select File Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 
 		if (iApduResponseLen > 0)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - getDocumentNumber - WARNING Select File Resp [%ld]", iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - getDocumentNumber - WARNING Select File Resp [%ld]", iApduResponseLen);
 		}
 
 		// cmd READ BINARY 0x00,0xB0,0x**,0x**
@@ -3872,22 +3862,22 @@ static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
 
 		iApduResponseLen = sizeof(aApduResponse);
 		pSBIO->lReturn = transmitPlainApdu(opSICAO, pDev, aApduHeader, (unsigned char)0, NULL, 5, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-		if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+		if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_READ;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Read Binary [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_READ;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Read Binary [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 		if (ucSw1 != 0x90 || ucSw2 != 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_READ_RESP;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR Read Binary Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_READ_RESP;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR Read Binary Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 
 		if (iApduResponseLen != 5)
 		{
-			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - getDocumentNumber - WARNING Read Binary Resp [%ld]", iApduResponseLen);
+			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - getDocumentNumber - WARNING Read Binary Resp [%ld]", iApduResponseLen);
 		}
 
 		memset(sDocNum, 0, sizeof(sDocNum));
@@ -3897,22 +3887,22 @@ static int getDocumentNumber(stSolemICAOPtr opSICAO, void *pDev)
 			sprintf_s(sDocNum, sizeof(sDocNum), "%s%d", sDocNum, iTmp2);
 		}
 
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getDocumentNumber - Doc Number [%s]", sDocNum);
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getDocumentNumber - Doc Number [%s]", sDocNum);
 
-		pSBIO->lReturn = sBioPutData(pSBIO, SOLEMBIO_DATAFIELD_DOC_SERIAL, SOLEMBIO_DATAFIELDPROP_NONE, sDocNum, strlen(sDocNum));
-		if (pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_SERIAL, BIO_DATAFIELDPROP_NONE, sDocNum, strlen(sDocNum));
+		if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_GETDOCUMENTNUMBER_PUTDATA_DOC_SERIAL;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - getDocumentNumber - ERROR PutData Document Number [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_GETDOCUMENTNUMBER_PUTDATA_DOC_SERIAL;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getDocumentNumber - ERROR PutData Document Number [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_getDocumentNumber;
 		}
 	}
 	else
 	{
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - getDocumentNumber - New Doc - Skip Document Number");
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getDocumentNumber - New Doc - Skip Document Number");
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - getDocumentNumber - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - getDocumentNumber - OUT");
 
 JMP_getDocumentNumber:
 	//mutex_unlock(opSICAO->oMutex);
@@ -3921,28 +3911,28 @@ JMP_getDocumentNumber:
 }
 
 
-int SolemICAOInit(stSolemBioPtr	opSBIO)
+int ICAOInit(stHndBioPtr	opSBIO)
 {	
-	stSolemICAOPtr		pTmpSICAO = NULL;
+	sHndICAOPtr		pTmpSICAO = NULL;
 	stLoggerPtr			pLogger = NULL;
 
 	pLogger = opSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - Init - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - Init - IN");
 
 	//return 107;
 
-	pTmpSICAO = (stSolemICAOPtr)calloc(1,sizeof(stSolemICAO));
+	pTmpSICAO = (sHndICAOPtr)calloc(1,sizeof(stHndICAO));
 	if(pTmpSICAO == NULL)
 	{
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Init - ERROR Creating Engine Handle");
-		return SOLEMICAO_ERROR_INIT_ENGINEHANDLE_MEM;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Init - ERROR Creating Engine Handle");
+		return ICAO_ERROR_INIT_ENGINEHANDLE_MEM;
 	}
-	opSBIO->hSolemICAO = pTmpSICAO;
+	opSBIO->HndICAO = pTmpSICAO;
 	pTmpSICAO->pSBIO = opSBIO;
 	
 	opSBIO->lReturn = 0;
-	opSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	opSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	memset(pTmpSICAO->aCaptureField, 0, sizeof(pTmpSICAO->aCaptureField));
 	memset(pTmpSICAO->aCaptureDG, 0, sizeof(pTmpSICAO->aCaptureDG));
@@ -3957,407 +3947,407 @@ int SolemICAOInit(stSolemBioPtr	opSBIO)
 	if (pTmpSICAO->iMutexFlag != 0)
 	{
 		opSBIO->lReturn = GetLastError();
-		opSBIO->lError = SOLEMICAO_ERROR_CREATE_MUTEX;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Init - ERROR Creating Mutex [%ld][%ld]", opSBIO->lReturn, opSBIO->lError);
-		goto JMP_SolemICAOInit;
+		opSBIO->lError = ICAO_ERROR_CREATE_MUTEX;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Init - ERROR Creating Mutex [%ld][%ld]", opSBIO->lReturn, opSBIO->lError);
+		goto JMP_ICAOInit;
 	}
 #else
 	if ((pTmpSICAO->iMutexFlag = pthread_mutex_init(&pTmpSICAO->oMutex, NULL)) != 0)
 	{
 		opSBIO->lReturn = pTmpSICAO->iMutexFlag;
-		opSBIO->lError = SOLEMICAO_ERROR_CREATE_MUTEX;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Init - ERROR Creating Mutex [%ld][%ld]", opSBIO->lReturn, opSBIO->lError);
-		goto JMP_SolemICAOInit;
+		opSBIO->lError = ICAO_ERROR_CREATE_MUTEX;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Init - ERROR Creating Mutex [%ld][%ld]", opSBIO->lReturn, opSBIO->lError);
+		goto JMP_ICAOInit;
 	}
 #endif
 
 	// INIT EAC-PACE
 	EAC_init();
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - Init - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - Init - OUT");
 
-JMP_SolemICAOInit:
+JMP_ICAOInit:
 	return opSBIO->lError;
 }
 
-void SolemICAOClean(stSolemICAOPtr opSICAO)
+void ICAOClean(sHndICAOPtr opSICAO)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 	if(opSICAO == NULL)
 	{
-		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemBio - ERROR Engine Handle NULL");
+		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"Bio - ERROR Engine Handle NULL");
 		return;
 	}
 
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 	
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - Clean - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - Clean - IN");
 	
 	// Clean Mutex
 	mutex_destroy(opSICAO->oMutex);
 	opSICAO->iMutexFlag = -1;
 
-	pSBIO->hSolemICAO = NULL;
+	pSBIO->HndICAO = NULL;
 	free(opSICAO);
 
 	// Clean EAC-PACE
 	EAC_cleanup();
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - Clean - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - Clean - OUT");
 
 	return;
 }
 
-int SolemICAOAddCaptureField(stSolemICAOPtr opSICAO, int iFieldID)
+int ICAOAddCaptureField(sHndICAOPtr opSICAO, int iFieldID)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 	
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - AddCaptureField - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - AddCaptureField - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	mutex_lock(opSICAO->oMutex);
 
 	switch(iFieldID)
 	{
-	case SOLEMBIO_DATAFIELD_DOC_RUN:
-	case SOLEMBIO_DATAFIELD_DOC_NAMES:
-	case SOLEMBIO_DATAFIELD_DOC_SURNAME_1:
-	case SOLEMBIO_DATAFIELD_DOC_SURNAME_2:
-	case SOLEMBIO_DATAFIELD_DOC_GENDER:
-	case SOLEMBIO_DATAFIELD_DOC_NATIONALITY:
-	case SOLEMBIO_DATAFIELD_DOC_BIRTHDATE:
-	case SOLEMBIO_DATAFIELD_DOC_EXPIRYDATE:
-	case SOLEMBIO_DATAFIELD_DOC_MRZ:
-	//case SOLEMBIO_DATAFIELD_DOC_SERIAL:
-	case SOLEMBIO_DATAFIELD_DOC_COUNTRY_OF_ISSUE:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA);
+	case BIO_DATAFIELD_DOC_RUN:
+	case BIO_DATAFIELD_DOC_NAMES:
+	case BIO_DATAFIELD_DOC_SURNAME_1:
+	case BIO_DATAFIELD_DOC_SURNAME_2:
+	case BIO_DATAFIELD_DOC_GENDER:
+	case BIO_DATAFIELD_DOC_NATIONALITY:
+	case BIO_DATAFIELD_DOC_BIRTHDATE:
+	case BIO_DATAFIELD_DOC_EXPIRYDATE:
+	case BIO_DATAFIELD_DOC_MRZ:
+	//case BIO_DATAFIELD_DOC_SERIAL:
+	case BIO_DATAFIELD_DOC_COUNTRY_OF_ISSUE:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATA);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_1] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_1] = TRUE;
 		break;
-	//	case SOLEMBIO_DATAFIELD_DOC_LASTNAME:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA);
+	//	case BIO_DATAFIELD_DOC_LASTNAME:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATA);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data (Lastname) [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data (Lastname) [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
-		opSICAO->aCaptureField[SOLEMBIO_DATAFIELD_DOC_SURNAME_1] = TRUE;
-		opSICAO->aCaptureField[SOLEMBIO_DATAFIELD_DOC_SURNAME_2] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_1] = TRUE;
+		opSICAO->aCaptureField[BIO_DATAFIELD_DOC_SURNAME_1] = TRUE;
+		opSICAO->aCaptureField[BIO_DATAFIELD_DOC_SURNAME_2] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_1] = TRUE;
 		break;
-	//case SOLEMBIO_DATAFIELD_DOC_NAMES:
-	//case SOLEMBIO_DATAFIELD_DOC_SURNAME_1:
-	//case SOLEMBIO_DATAFIELD_DOC_SURNAME_2:
-	case SOLEMBIO_DATAFIELD_DOC_OCUPATION:
-	case SOLEMBIO_DATAFIELD_DOC_BIRTHPLACE:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA);
+	//case BIO_DATAFIELD_DOC_NAMES:
+	//case BIO_DATAFIELD_DOC_SURNAME_1:
+	//case BIO_DATAFIELD_DOC_SURNAME_2:
+	case BIO_DATAFIELD_DOC_OCUPATION:
+	case BIO_DATAFIELD_DOC_BIRTHPLACE:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATA);
 		if (pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data (Issuedate) [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data (Issuedate) [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_11] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_11] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_ISSUEDATE:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA);
+	case BIO_DATAFIELD_DOC_ISSUEDATE:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATA);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data (Issuedate) [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Data (Issuedate) [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATA, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_12] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_12] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_FACE:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_FACE);
+	case BIO_DATAFIELD_DOC_FACE:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_FACE);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Face [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_FACE, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Face [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_FACE, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_2] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_2] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_SIGNATURE:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_SIGNATURE);
+	case BIO_DATAFIELD_DOC_SIGNATURE:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_SIGNATURE);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Signature [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_SIGNATURE, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Signature [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_SIGNATURE, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_7] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_7] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_SERIAL:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DOCNUM);
+	case BIO_DATAFIELD_DOC_SERIAL:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DOCNUM);
 		if (pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Doc Number [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DOCNUM, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Doc Number [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DOCNUM, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetFinger = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_FINGERID_1:
-	case SOLEMBIO_DATAFIELD_DOC_FINGERID_2:
-	case SOLEMBIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT:
-	case SOLEMBIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_FINGER);
+	case BIO_DATAFIELD_DOC_FINGERID_1:
+	case BIO_DATAFIELD_DOC_FINGERID_2:
+	case BIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT:
+	case BIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_FINGER);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Finger [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_FINGER, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO Finger [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_FINGER, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetFinger = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_COM:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_COM:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup COM [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup COM [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_COM] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_COM] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_1:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_1:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 1 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 1 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_1] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_1] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_2:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_2:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 2 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 2 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_2] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_2] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_3:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_3:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 3 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 3 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_3] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_3] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_4:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_4:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 4 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 4 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_4] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_4] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_5:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_5:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 5 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 5 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_5] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_5] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_6:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_6:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 6 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 6 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_6] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_6] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_7:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_7:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 7 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 7 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_7] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_7] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_8:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_8:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 8 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 8 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_8] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_8] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_9:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_9:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 9 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 9 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_9] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_9] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_10:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_10:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 10 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 10 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_10] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_10] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_11:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_11:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 11 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 11 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_11] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_11] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_12:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_12:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 12 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 12 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_12] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_12] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_13:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_13:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 13 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 13 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_13] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_13] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_14:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_14:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 14 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 14 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_14] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_14] = TRUE;
 		break;
-	case SOLEMBIO_DATAFIELD_DOC_DG_15:
-		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
+	case BIO_DATAFIELD_DOC_DG_15:
+		pSBIO->lReturn = scl_GetFnBitmap(pSBIO->hSCL, BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP);
 		if(pSBIO->lReturn != SCL_FNBITMAP_ON)
 		{
-			pSBIO->lError = SOLEMBIO_ERROR_LICENSE_FNBITMAP_OFF;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 15 [%ld][%ld][%ld]", SOLEMBIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
-			goto JMP_SolemICAOAddCaptureField;
+			pSBIO->lError = BIO_ERROR_LICENSE_FNBITMAP_OFF;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR License FnBitmap Not Allow Capture ICAO DataGroup 15 [%ld][%ld][%ld]", BIO_FEATUREBITMAP_CAPT_ICAO_DATAGROUP, pSBIO->lReturn, pSBIO->lError);
+			goto JMP_ICAOAddCaptureField;
 		}
 		opSICAO->iGetICAO = TRUE;
 		opSICAO->aCaptureField[iFieldID] = TRUE;
-		opSICAO->aCaptureDG[SOLEMICAO_DATAGROUP_15] = TRUE;
+		opSICAO->aCaptureDG[ICAO_DATAGROUP_15] = TRUE;
 		break;
 	default:
-		pSBIO->lError = SOLEMICAO_ERROR_ADDCAPTUREFIELD_DATAFIELD_INALID;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - AddCaptureField - ERROR DataField Invalid [%d]", iFieldID);
-		goto JMP_SolemICAOAddCaptureField;
+		pSBIO->lError = ICAO_ERROR_ADDCAPTUREFIELD_DATAFIELD_INALID;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - AddCaptureField - ERROR DataField Invalid [%d]", iFieldID);
+		goto JMP_ICAOAddCaptureField;
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - AddCaptureField - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - AddCaptureField - OUT");
 
-JMP_SolemICAOAddCaptureField:
+JMP_ICAOAddCaptureField:
 	mutex_unlock(opSICAO->oMutex);
 
 	return pSBIO->lError;
 }
 
-int SolemICAOCleanCaptureFields(stSolemICAOPtr opSICAO)
+int ICAOCleanCaptureFields(sHndICAOPtr opSICAO)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 	
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - CleanCaptureField - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - CleanCaptureField - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 	mutex_lock(opSICAO->oMutex);
 
@@ -4366,16 +4356,16 @@ stLoggerPtr			pLogger = NULL;
 	opSICAO->iGetICAO = FALSE;
 	opSICAO->iGetFinger = FALSE;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - CleanCaptureField - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - CleanCaptureField - OUT");
 
 	mutex_unlock(opSICAO->oMutex);
 
 	return pSBIO->lError;
 }
 
-int SolemICAOCapture(stSolemICAOPtr opSICAO, int iDeviceID, int iTimeout)
+int ICAOCapture(sHndICAOPtr opSICAO, int iDeviceID, int iTimeout)
 {
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 void				*pTmpDev = NULL;
 
@@ -4387,33 +4377,33 @@ long			lTmpError;
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 	
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - Capture - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - Capture - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 	
 	//	Get and Check Device Handler
 	pTmpDev = pSBIO->vpDeviceHandler[iDeviceID];
 	if (pTmpDev == NULL)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_CAPTURE_DEVICEHANDLE_NULL;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_SolemICAOCapture;
+		pSBIO->lError = ICAO_ERROR_CAPTURE_DEVICEHANDLE_NULL;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_ICAOCapture;
 	}
 	
-	if (iDeviceID == SOLEMBIO_DEVICE_BIOPIN)
+	if (iDeviceID == BIO_DEVICE_BIOPIN)
 	{
 		// opSICAO->fn_GetCard = &BioPinGetCard;
 		// opSICAO->fn_Transmit = &BioPinTransmit;
 		// opSICAO->fn_Disconnect = &BioPinDisconnect;
 	}
-	else if (iDeviceID == SOLEMBIO_DEVICE_BCR250BT)
+	else if (iDeviceID == BIO_DEVICE_BCR250BT)
 	{
 		// opSICAO->fn_GetCard = &Bcr250btGetCard;
 		// opSICAO->fn_Transmit = &Bcr250btTransmit;
 		// opSICAO->fn_Disconnect = &Bcr250btDisconnect;
 	}
-	else if (iDeviceID == SOLEMBIO_DEVICE_NFC)
+	else if (iDeviceID == BIO_DEVICE_NFC)
 	{
 		// opSICAO->fn_GetCard = &NfcGetCard;
 		// opSICAO->fn_Transmit = &NfcTransmit;
@@ -4438,48 +4428,48 @@ long			lTmpError;
 	} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout);
 	if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_NO_CARD_AVAILABLE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_SolemICAOCapture;
+		pSBIO->lError = ICAO_ERROR_NO_CARD_AVAILABLE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_ICAOCapture;
 	}
 	else if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_CAPTURE_GETCARD;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_SolemICAOCapture;
+		pSBIO->lError = ICAO_ERROR_CAPTURE_GETCARD;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_ICAOCapture;
 	}
 
 	//	Get Finger Reference
-	if (getFingerRef(opSICAO, pTmpDev) != SOLEMICAO_ERROR_NO_ERROR)
+	if (getFingerRef(opSICAO, pTmpDev) != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR GetFingerRef [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_SolemICAOCapture;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR GetFingerRef [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_ICAOCapture;
 	}
 
 	// Get Document Number
-	if (getDocumentNumber(opSICAO, pTmpDev) != SOLEMICAO_ERROR_NO_ERROR)
+	if (getDocumentNumber(opSICAO, pTmpDev) != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR GetDocumentNumber [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_SolemICAOCapture;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR GetDocumentNumber [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_ICAOCapture;
 	}
 	
 	//	Get ICAO Data
-	if (getIcao(opSICAO, pTmpDev) != SOLEMICAO_ERROR_NO_ERROR)
+	if (getIcao(opSICAO, pTmpDev) != ICAO_ERROR_NO_ERROR)
 	{
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR GetIcao [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_SolemICAOCapture;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR GetIcao [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_ICAOCapture;
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - Capture - OUT");
-JMP_SolemICAOCapture:
-	if (pSBIO->lError != SOLEMICAO_ERROR_NO_CARD_AVAILABLE)
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - Capture - OUT");
+JMP_ICAOCapture:
+	if (pSBIO->lError != ICAO_ERROR_NO_CARD_AVAILABLE)
 	{
 		lTmpError = pSBIO->lError;
 		pSBIO->lReturn = opSICAO->fn_Disconnect(pTmpDev);
 		if (pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_CAPTURE_DISCONNECT;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - Capture - ERROR SmartCardDisconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_CAPTURE_DISCONNECT;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR SmartCardDisconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		}
 		pSBIO->lError = lTmpError;
 	}
@@ -4489,10 +4479,10 @@ JMP_SolemICAOCapture:
 	return pSBIO->lError;
 }
 
-int SolemICAOMOC(stSolemICAOPtr opSICAO, int iDeviceID, int iFingerRef, int iFieldID, int *ipMatchResult)
+int ICAOMOC(sHndICAOPtr opSICAO, int iDeviceID, int iFingerRef, int iFieldID, int *ipMatchResult)
 {
 
-stSolemBioPtr		pSBIO = NULL;
+stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
 void				*pTmpDev = NULL;
 
@@ -4508,7 +4498,7 @@ unsigned char		ucSw1;
 unsigned char		ucSw2;
 
 int					iPinNotFoundBugRetryCount = 0;
-long				lTmpError = SOLEMBIO_ERROR_NO_ERROR;
+long				lTmpError = BIO_ERROR_NO_ERROR;
 
 long			lInitialTime;
 long			lActualTime;
@@ -4517,10 +4507,10 @@ int				iTimeout = 10000;
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - MOC - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - MOC - IN");
 
 	pSBIO->lReturn = 0;
-	pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
 
 	///////////////////////////////////////////////////////////////////////////
@@ -4536,8 +4526,8 @@ int				iTimeout = 10000;
 	//pTmpDev = pSBIO->vpDeviceHandler[iDeviceID];
 	//if (pTmpDev == NULL)
 	//{
-	//	pSBIO->lError = SOLEMICAO_ERROR_MOC_DEVICEHANDLE_NULL;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	pSBIO->lError = ICAO_ERROR_MOC_DEVICEHANDLE_NULL;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	//	goto JMP_matchOnCard;
 	//}
 	///////////////////////////////////////////////////////////////////////////
@@ -4546,19 +4536,19 @@ int				iTimeout = 10000;
 
 
 
-	if (iDeviceID == SOLEMBIO_DEVICE_BIOPIN)
+	if (iDeviceID == BIO_DEVICE_BIOPIN)
 	{
 		// opSICAO->fn_GetCard = &BioPinGetCard;
 		// opSICAO->fn_Transmit = &BioPinTransmit;
 		// opSICAO->fn_Disconnect = &BioPinDisconnect;
 	}
-	else if (iDeviceID == SOLEMBIO_DEVICE_BCR250BT)
+	else if (iDeviceID == BIO_DEVICE_BCR250BT)
 	{
 		// opSICAO->fn_GetCard = &Bcr250btGetCard;
 		// opSICAO->fn_Transmit = &Bcr250btTransmit;
 		// opSICAO->fn_Disconnect = &Bcr250btDisconnect;
 	}
-	else if (iDeviceID == SOLEMBIO_DEVICE_NFC)
+	else if (iDeviceID == BIO_DEVICE_NFC)
 	{
 		// opSICAO->fn_GetCard = &NfcGetCard;
 		// opSICAO->fn_Transmit = &NfcTransmit;
@@ -4575,18 +4565,18 @@ int				iTimeout = 10000;
 	if(iFingerRef != 1 && iFingerRef != 2)
 	{
 		pSBIO->lReturn = iFingerRef;
-		pSBIO->lError = SOLEMICAO_ERROR_MOC_FINGER_REF_INVALID;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Finger Ref Invalid [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_MOC_FINGER_REF_INVALID;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Finger Ref Invalid [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_matchOnCard;
 	}
 
 	
 	// Get Iso Compact Template for Matching
-	pSBIO->lReturn = sBioGetData(pSBIO, (enDataField)iFieldID, SOLEMBIO_DATAFIELDPROP_MINUTIAE_SOLISOC, aIsoCTemplate, &iIsoCTemplateLen);
-	if(pSBIO->lReturn != SOLEMBIO_ERROR_NO_ERROR)
+	pSBIO->lReturn = sBioGetData(pSBIO, (enDataField)iFieldID, BIO_DATAFIELDPROP_MINUTIAE_SOLISOC, aIsoCTemplate, &iIsoCTemplateLen);
+	if(pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_MOC_GET_TEMPLATE;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Get IsoCompact Template [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		pSBIO->lError = ICAO_ERROR_MOC_GET_TEMPLATE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Get IsoCompact Template [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_matchOnCard;
 	}
 
@@ -4601,7 +4591,7 @@ int				iTimeout = 10000;
 	//fread(buffer, sizeof(unsigned char), 231, ptr);							// read 10 bytes to our buffer
 	//memcpy_s(aIsoCTemplate, sizeof(aIsoCTemplate), buffer, 231);
 	//iIsoCTemplateLen = 231;
-	//PutInLog(pLogger, LOG_LEVEL_INFORMATIONAL, (char*)"SolemICAO - MOC - Using Test Template [%ld]", iIsoCTemplateLen);
+	//PutInLog(pLogger, LOG_LEVEL_INFORMATIONAL, (char*)"ICAO - MOC - Using Test Template [%ld]", iIsoCTemplateLen);
 	//// TEST TEMPLATE - OUT
 	
 
@@ -4617,14 +4607,14 @@ int				iTimeout = 10000;
 
 	//if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
 	//{
-	//	pSBIO->lError = SOLEMICAO_ERROR_NO_CARD_AVAILABLE;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	pSBIO->lError = ICAO_ERROR_NO_CARD_AVAILABLE;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	//	goto JMP_matchOnCard;
 	//}
 	//else if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
 	//{
-	//	pSBIO->lError = SOLEMICAO_ERROR_MOC_GETCARD;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	pSBIO->lError = ICAO_ERROR_MOC_GETCARD;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	//	goto JMP_matchOnCard;
 	//}
 	///////////////////////////////////////////////////////////////////////////
@@ -4634,29 +4624,29 @@ int				iTimeout = 10000;
 
 	while(iPinNotFoundBugRetryCount < 3)
 	{
-		pSBIO->lError = SOLEMICAO_ERROR_NO_ERROR;
+		pSBIO->lError = ICAO_ERROR_NO_ERROR;
 		iPinNotFoundBugRetryCount++;
 
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
 
 		// Check if Card was no swapped making a ICAO connection first, to force authentication ('cause old cards don't requiere authentication for MOC)
-		if (ConnectCard(opSICAO, pTmpDev, 1) != SOLEMICAO_ERROR_NO_ERROR)
+		if (ConnectCard(opSICAO, pTmpDev, 1) != ICAO_ERROR_NO_ERROR)
 		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - MOC - ERROR ICAO Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - MOC - ERROR ICAO Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			continue;
 		}
 
 		// Connect Card
-		if (ConnectCard(opSICAO, pTmpDev, 0) != SOLEMICAO_ERROR_NO_ERROR)
+		if (ConnectCard(opSICAO, pTmpDev, 0) != ICAO_ERROR_NO_ERROR)
 		{
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - MOC - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - MOC - ERROR Connect to Card [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			continue;
 		}
 
 		if (iIsOld)
 		{
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - MOC - MOC in Old Document [%ld]", iPinNotFoundBugRetryCount);
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - MOC - MOC in Old Document [%ld]", iPinNotFoundBugRetryCount);
 
 			// cmd SELECT 0x00,0xA4,0x04,0x0C
 			aApduHeader[0] = 0x00;
@@ -4684,17 +4674,17 @@ int				iTimeout = 10000;
 
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitPlainApdu(opSICAO, pTmpDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_MOC_SELECT_APP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - MOC - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_MOC_SELECT_APP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - MOC - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				continue;
 				//goto JMP_matchOnCard;
 			}
 			if (ucSw1 != 0x90 || ucSw2 != 0x00)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_MOC_SELECT_APP_RESP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - MOC - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_MOC_SELECT_APP_RESP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - MOC - ERROR Select App Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 				continue;
 				//goto JMP_matchOnCard;
 			}
@@ -4702,7 +4692,7 @@ int				iTimeout = 10000;
 
 			if (iIsoCTemplateLen > 120)
 			{
-				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - MOC - WARN Template too large [%d]", iIsoCTemplateLen);
+				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - MOC - WARN Template too large [%d]", iIsoCTemplateLen);
 				//iIsoCTemplateLen = 120;
 			}
 
@@ -4740,26 +4730,26 @@ int				iTimeout = 10000;
 
 			iApduResponseLen = sizeof(aApduResponse);
 			pSBIO->lReturn = transmitPlainApdu(opSICAO, pTmpDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - MOC - ERROR Match [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_MOC_MATCH;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - MOC - ERROR Match [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				continue;
 				//goto JMP_matchOnCard;
 			}
 		}
 		else
 		{
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"SolemICAO - MOC - MOC in New Document [%ld]", iPinNotFoundBugRetryCount);
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - MOC - MOC in New Document [%ld]", iPinNotFoundBugRetryCount);
 
 			if (iIsoCTemplateLen > 120)
 			{
-				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - MOC - WARN Template too large [%d]", iIsoCTemplateLen);
+				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - MOC - WARN Template too large [%d]", iIsoCTemplateLen);
 				//iIsoCTemplateLen = 120;
 				if (iIsoCTemplateLen > 180)
 				{
 					iIsoCTemplateLen = 180;
-					PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"SolemICAO - MOC - WARN Truncating Template [%ld]", iIsoCTemplateLen);
+					PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - MOC - WARN Truncating Template [%ld]", iIsoCTemplateLen);
 				}
 			}
 
@@ -4784,13 +4774,13 @@ int				iTimeout = 10000;
 				}
 				else
 				{
-					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x7F2E");
+					PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x7F2E");
 					goto JMP_matchOnCard;
 				}
 			}
 			else
 			{
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - ConnectCard - Error wrapping 0x81");
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - Error wrapping 0x81");
 				goto JMP_matchOnCard;
 			}*/
 
@@ -4828,10 +4818,10 @@ int				iTimeout = 10000;
 			iApduResponseLen = sizeof(aApduResponse);
 
 			pSBIO->lReturn = transmitSecureApdu(opSICAO, pTmpDev, aApduHeader, (unsigned char)iApduDataLen, aApduData, 0, &ucSw1, &ucSw2, aApduResponse, &iApduResponseLen);
-			if (pSBIO->lReturn != SOLEMICAO_ERROR_NO_ERROR)
+			if (pSBIO->lReturn != ICAO_ERROR_NO_ERROR)
 			{
-				pSBIO->lError = SOLEMICAO_ERROR_MOC_SELECT_APP;
-				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"SolemICAO - MOC - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+				pSBIO->lError = ICAO_ERROR_MOC_SELECT_APP;
+				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - MOC - ERROR Select App [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 				continue;
 				//goto JMP_matchOnCard;
 			}
@@ -4847,90 +4837,90 @@ int				iTimeout = 10000;
 	
 		//	if(ucSw1 != 0x90 || ucSw2 != 0x00)
 		//	{
-		//		pSBIO->lError = SOLEMICAO_ERROR_MOC_SELECT_APP_RESP;
-		//		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - ERROR Match Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+		//		pSBIO->lError = ICAO_ERROR_MOC_SELECT_APP_RESP;
+		//		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - ERROR Match Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 		//		goto JMP_matchOnCard;
 		//	}
 	
 		if( ucSw1 == 0x90 && ucSw2 == 0x00)
 		{
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - MOC - Do Match");
-			*ipMatchResult = SOLEMBIO_MOC_HIT;
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - MOC - Do Match");
+			*ipMatchResult = BIO_MOC_HIT;
 		}
 		else if( ucSw1 == 0x69 && ucSw2 == 0x83)
 		{
 #ifndef _FOR_BECH
-			pSBIO->lError = SOLEMBIO_ERROR_MOC_LOCKED;
+			pSBIO->lError = BIO_ERROR_MOC_LOCKED;
 #endif
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - MOC - Don't Match (moc locked)");
-			*ipMatchResult = SOLEMBIO_MOC_NOHIT;
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - MOC - Don't Match (moc locked)");
+			*ipMatchResult = BIO_MOC_NOHIT;
 		}
 		else if( ucSw1 == 0x63 && ucSw2 == 0x00)
 		{
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - MOC - Don't Match");
-			*ipMatchResult = SOLEMBIO_MOC_NOHIT;
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - MOC - Don't Match");
+			*ipMatchResult = BIO_MOC_NOHIT;
 		}
 		else if( ucSw1 == 0x63 && ucSw2 >= 0xC0 && ucSw2 <= 0xCF)
 		{
-			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - MOC - Don't Match with %d retries left", ucSw2 & 0x0F);
-			*ipMatchResult = SOLEMBIO_MOC_NOHIT;
+			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - MOC - Don't Match with %d retries left", ucSw2 & 0x0F);
+			*ipMatchResult = BIO_MOC_NOHIT;
 		}
 		else if( ucSw1 == 0x6A && ucSw2 == 0x86)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_P1;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (P1 != '00') [%ld]", pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_P1;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (P1 != '00') [%ld]", pSBIO->lError);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		else if( ucSw1 == 0x67 && ucSw2 == 0x00)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_WRONG_LENGTH;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (Wrong length) [%ld][%ld]", pSBIO->lError, iIsoCTemplateLen);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_WRONG_LENGTH;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (Wrong length) [%ld][%ld]", pSBIO->lError, iIsoCTemplateLen);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		else if( ucSw1 == 0x6A && ucSw2 == 0x88)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_PIN_NOT_FOUND;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (Referenced PIN not found) [%ld][%02X]", pSBIO->lError, aApduHeader[3]);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_PIN_NOT_FOUND;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (Referenced PIN not found) [%ld][%02X]", pSBIO->lError, aApduHeader[3]);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		else if( ucSw1 == 0x69 && ucSw2 == 0x82)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_SECURITY;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (Security Status not satisfied) [%ld]", pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_SECURITY;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (Security Status not satisfied) [%ld]", pSBIO->lError);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		else if( ucSw1 == 0x69 && ucSw2 == 0x84)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_COUNTER_ZERO;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (Usage counter reached 0) [%ld]", pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_COUNTER_ZERO;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (Usage counter reached 0) [%ld]", pSBIO->lError);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		else if( ucSw1 == 0x63 && ucSw2 == 0x63)
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_NEED_MORE_DATA;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (Need more data) [%ld]", pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_NEED_MORE_DATA;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (Need more data) [%ld]", pSBIO->lError);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		else
 		{
-			pSBIO->lError = SOLEMICAO_ERROR_MOC_MATCH_UNKNOWN;
-			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Match Resp (Unknown error) [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
+			pSBIO->lError = ICAO_ERROR_MOC_MATCH_UNKNOWN;
+			PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Match Resp (Unknown error) [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 			continue;
 			//goto JMP_matchOnCard;
 		}
 		break;
 	}
 
-	if(pSBIO->lError != SOLEMICAO_ERROR_NO_ERROR)
+	if(pSBIO->lError != ICAO_ERROR_NO_ERROR)
 		goto JMP_matchOnCard;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"SolemICAO - MOC - OUT");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - MOC - OUT");
 JMP_matchOnCard:
 	
 	lTmpError = pSBIO->lError;
@@ -4940,8 +4930,8 @@ JMP_matchOnCard:
 	//pSBIO->lReturn = opSICAO->fn_Disconnect(pTmpDev);
 	//if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
 	//{
-	//	pSBIO->lError = SOLEMICAO_ERROR_MOC_DISCONNECT;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"SolemICAO - MOC - ERROR Disconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	pSBIO->lError = ICAO_ERROR_MOC_DISCONNECT;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Disconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 	//}
 	///////////////////////////////////////////////////////////////////////////
 // RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 

@@ -75,6 +75,7 @@ openpace_wrapper.c ^
 %NFC_DIR%\all_smart_card.c ^
 %NFC_DIR%\EdvBio_Wrapper.c ^
 %SECURE_DIR%\secure_tools.c ^
+%SECURE_DIR%\Client_Info.c ^
 %SECURE_DIR%\CypherDechypher.c ^
 %OPENPACE_SRC_DIR%\iob_fix.c ^
 %OPENPACE_SRC_DIR%\libeacMT.lib ^
@@ -84,6 +85,8 @@ crypt32.lib ^
 advapi32.lib ^
 user32.lib ^
 gdi32.lib ^
+ole32.lib ^
+oleaut32.lib ^
 legacy_stdio_definitions.lib ^
 /link ^
 /NODEFAULTLIB:LIBCMT
