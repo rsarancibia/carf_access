@@ -6,6 +6,10 @@
 #include <openssl/bio.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <utils.h>
+
 
 
 EVP_PKEY* load_public_key_from_string(const char* pubkey_pem);
@@ -408,41 +412,70 @@ int verify_signature_new(
 
 //////////////////////////////////////////////////////////////////////////////////
 
-/*
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+static unsigned char    *g_baUserLicenseToCheck = NULL;
+static long             g_UserLicenseToCheck_Len = 0;
 
 unsigned char* read_file(const char* path, long* size)
 {
+    unsigned char* buffer = NULL;
+    
     FILE* f = fopen(path, "rb");
-    fseek(f, 0, SEEK_END);
-    *size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    
+    if(f != NULL)
+    {
+        fseek(f, 0, SEEK_END);
+        *size = ftell(f);
+        fseek(f, 0, SEEK_SET);
 
-    unsigned char* buffer = malloc(*size);
-    fread(buffer, 1, *size, f);
-    fclose(f);
-
+        buffer = malloc(*size);
+        fread(buffer, 1, *size, f);
+        fclose(f);
+    }
     return buffer;
 }
 
-3. Separar LicInfo y Firma
+void Check_Buffer_License()
+{
+    if (g_baUserLicenseToCheck != NULL)
+    {
+        free(g_baUserLicenseToCheck);
+        g_baUserLicenseToCheck = NULL;
+    }
+}
 
-uint32_t len = *(uint32_t*)buffer;  // primeros 4 bytes
+__declspec(dllexport)
+int Add_User_License(unsigned char *path_license)
+{
+    int status = 0;
+    
+    while(TRUE)
+    { 
+        Check_Buffer_License();
 
-unsigned char* licInfo = buffer;
-size_t licInfoSize = 4 + len;
+        PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, "Path to User License : %s", path_license);
 
-unsigned char* signature = buffer + licInfoSize;
-size_t signatureSize = fileSize - licInfoSize;
+        g_baUserLicenseToCheck = read_file(path_license, &g_UserLicenseToCheck_Len);
+        if(g_baUserLicenseToCheck == NULL)
+        {
+            PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, "HORRROR !!!!!!!!!!");
+            
+            
+            status = 1;
+            break;
+        }
+    
+        PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, "LIC EN BUEN CAMINO -> %d", g_UserLicenseToCheck_Len);
 
 
-Verificar firma con OpenSSL
 
-#include <openssl/evp.h>
-#include <openssl/pem.h>
+
+    
+        break;
+    }
+
+    Check_Buffer_License();
+    return status;
+}
 
 int verify_signature(
     unsigned char* data, size_t data_len,

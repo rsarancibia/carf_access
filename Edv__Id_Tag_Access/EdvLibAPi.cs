@@ -15,6 +15,11 @@ namespace Edv__Id_Tag_Access
 {
     public class EdvLibAPi
     {
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Add_User_License(byte[] path_license);
+
+
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern void Edv_Test_Licencia();
 
@@ -112,6 +117,13 @@ namespace Edv__Id_Tag_Access
 
                 Log.Information("DLL Init - Start");
 
+
+                string path_license = "licenciaUser.bin";
+
+                Add_User_License(Encoding.UTF8.GetBytes(path_license + "\0"));
+
+
+
                 //byte[] lic  = new byte[1024 * 5];
                 //int lic_len = lic.Length;
 
@@ -134,7 +146,7 @@ namespace Edv__Id_Tag_Access
                 //{
                 //    Log.Error("ERROR AL OBTENER DATOS DE CLIENTE");
                 //}
-                
+
                 ////Edv_Test_Licencia();
                 //return 0;
 

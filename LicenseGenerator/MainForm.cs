@@ -10,7 +10,8 @@ namespace LicenseGenerator
 
     public partial class MainForm : Form
     {
-        string path = @"i:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\private.pem";
+        //string path = @"i:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\private.pem";
+        string path = @"private.pem";
 
         LicenseData         g_oLic = new();
         LicenseData.Data    g_oLicData = new();
