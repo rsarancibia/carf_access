@@ -120,7 +120,7 @@ namespace UI_Demo
         {
             string title = "Get license";
             string license = "";
-            string path = @"d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
+            string path = @"i:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
 
             int status = EdvLibAPi.Get_Client_Info(path, ref license);
 

@@ -368,3 +368,137 @@ EVP_PKEY* load_private_key_from_string(const char* privkey_pem)
     return pkey;
 
 }
+
+
+
+
+int verify_signature_new(
+    const unsigned char* data, size_t data_len,
+    const unsigned char* signature, size_t sig_len,
+    const char* pubkey_path)
+{
+    FILE* fp = fopen(pubkey_path, "r");
+    if (!fp) return 1;
+
+    EVP_PKEY* pubkey = PEM_read_PUBKEY(fp, NULL, NULL, NULL);
+    fclose(fp);
+    if (!pubkey) return 2;
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+    if (!ctx) return 3;
+
+    if (EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pubkey) <= 0)
+        return 4;
+
+    if (EVP_DigestVerifyUpdate(ctx, data, data_len) <= 0)
+        return 5;
+
+    int result = EVP_DigestVerifyFinal(ctx, signature, sig_len);
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pubkey);
+
+    if (result == 1)
+        return 0; // ✅ firma válida
+    else if (result == 0)
+        return 6; // ❌ firma inválida
+    else
+        return 7; // 💥 error
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+
+/*
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+unsigned char* read_file(const char* path, long* size)
+{
+    FILE* f = fopen(path, "rb");
+    fseek(f, 0, SEEK_END);
+    *size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    unsigned char* buffer = malloc(*size);
+    fread(buffer, 1, *size, f);
+    fclose(f);
+
+    return buffer;
+}
+
+3. Separar LicInfo y Firma
+
+uint32_t len = *(uint32_t*)buffer;  // primeros 4 bytes
+
+unsigned char* licInfo = buffer;
+size_t licInfoSize = 4 + len;
+
+unsigned char* signature = buffer + licInfoSize;
+size_t signatureSize = fileSize - licInfoSize;
+
+
+Verificar firma con OpenSSL
+
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+
+int verify_signature(
+    unsigned char* data, size_t data_len,
+    unsigned char* sig, size_t sig_len,
+    const char* pubkey_path)
+{
+    int result = 0;
+
+    FILE* f = fopen(pubkey_path, "r");
+    EVP_PKEY* pubkey = PEM_read_PUBKEY(f, NULL, NULL, NULL);
+    fclose(f);
+
+    EVP_MD_CTX* ctx = EVP_MD_CTX_new();
+
+    if (!ctx) return 0;
+
+    if (EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pubkey) != 1)
+        goto cleanup;
+
+    if (EVP_DigestVerifyUpdate(ctx, data, data_len) != 1)
+        goto cleanup;
+
+    result = EVP_DigestVerifyFinal(ctx, sig, sig_len);
+
+cleanup:
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pubkey);
+
+    return result == 1; // 1 = válido
+}
+
+5. Uso completo
+
+long fileSize;
+unsigned char* buffer = read_file("licencia.bin", &fileSize);
+
+// Parseo
+uint32_t len = *(uint32_t*)buffer;
+
+unsigned char* licInfo = buffer;
+size_t licInfoSize = 4 + len;
+
+unsigned char* signature = buffer + licInfoSize;
+size_t signatureSize = fileSize - licInfoSize;
+
+// Verificar
+int ok = verify_signature(
+    licInfo, licInfoSize,
+    signature, signatureSize,
+    "public.pem"
+);
+
+if (ok)
+printf("✔ Firma válida\n");
+else
+printf("❌ Firma inválida\n");
+
+*/
+
