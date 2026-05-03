@@ -108,69 +108,95 @@ static const char* TEST_PUBLIC_KEY_PEM =
 
 
 __declspec(dllexport)
-int Edv_Licencia_Get_Client_Info(unsigned char *clientInfo, int *infoLen)
+int Edv_Licencia_Get_Client_Info(unsigned char* path_public_key, unsigned char *clientInfo, int *infoLen)
 {
     int status = 0;
     char hwid[256] = { 0 };
  
-    char encrypted[1024 * 4];
-    int encrypted_total = 0;
-    char text[] = "Hola";
+    unsigned char   encrypted[1024 * 4];
+    int             encrypted_total = 0;
+    unsigned char   encriptado_b64[10 * 104];
+    int             encriptado_b64_len = sizeof(encriptado_b64);
 
 
-    status = build_hwid(hwid);
-    
-    if (status == 0)
+    while(TRUE)
     {
-        
-        
-        status =  rsa_encrypt(text, strlen(text),
-            encrypted, &encrypted_total,
-            TEST_PUBLIC_KEY_PEM);
+        // Pasos a seguir:
+        // 1. hwid contiene una cadena.
+        // 2. Se calcula un hash256 de hwid. Esto genera 32 bytes
+        // 3. Se encripta el hash con llave pública.
+        // 4. El resultado de encriptación se pasa a base64.
 
-        unsigned char encriptado_b64[10*104];
-        int encriptado_b64_len = sizeof(encriptado_b64);
-        Base64Encode(encrypted, encrypted_total, encriptado_b64, &encriptado_b64_len);
-        
-        PutInLog(NULL, LOG_LEVEL_NOTICE, "ENCRYPTAD0_B64: %d - Status : %d", encriptado_b64_len, status);
-        DisplayHex(0, encriptado_b64, 16);
 
-        
-        unsigned char decoded_b64[10 * 104];
-        int decoded_b64_len = sizeof(encriptado_b64);
+        // Paso 1            
+        status = build_hwid(hwid);
 
-        Base64Decode(encriptado_b64, decoded_b64, &decoded_b64_len);
+        if(status != 0)
+        {
+            PutInLog(NULL, LOG_LEVEL_ERROR, "Cannot get hardware info : %d", status);
+            status = 1;
+            break;
+        }
+
+        PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, "HWID : %s", hwid);
+
+        // Paso 2
+        unsigned char hash[32];
+        if(SHA256((unsigned char*)hwid, strlen(hwid), hash) == 0)
+        {
+            status = 2;
+            break;
+        }
+        
+        // Paso 3
+        size_t len = 0;
+
+        status =  rsa_encrypt(hwid, strlen(hwid), encrypted, &len, path_public_key);
+        if (status != 0)
+        {
+            status = 3;
+            break;
+        }
+
+        encrypted_total = (int)len;
+
+        // Paso 4
+        status = Base64Encode(encrypted, encrypted_total, clientInfo, infoLen);
+        if (status != 0)
+        {
+            status = 4;
+            break;
+        }
+
+
+        //
+        //PutInLog(NULL, LOG_LEVEL_NOTICE, "ENCRYPTAD0_B64: %d - Status : %d", *infoLen, status);
+        ////DisplayHex(0, encriptado_b64, 16);
+
+        ////*infoLen = 10;
+
+        //return 0;
+
+        //
+        //unsigned char decoded_b64[10 * 104];
+        //int decoded_b64_len = sizeof(encriptado_b64);
+
+        //Base64Decode(encriptado_b64, decoded_b64, &decoded_b64_len);
 
        
-        char decrypted[1024 * 4];
-        int decrypted_total = 0;
+        //char decrypted[1024 * 4];
+        //int decrypted_total = 0;
 
-        status = rsa_decrypt(decoded_b64, decoded_b64_len,
-            decrypted, &decrypted_total,
-            TEST_PRIVATE_KEY_PEM);
+        //status = rsa_decrypt(decoded_b64, decoded_b64_len,
+        //    decrypted, &decrypted_total,
+        //    TEST_PRIVATE_KEY_PEM);
 
-        PutInLog(NULL, LOG_LEVEL_NOTICE, "DECRYPTED: %d - Status : %d", decrypted_total, status);
-        DisplayHex(0, decrypted, decrypted_total);
+        //PutInLog(NULL, LOG_LEVEL_NOTICE, "DECRYPTED: %d - Status : %d", decrypted_total, status);
+        //DisplayHex(0, decrypted, decrypted_total);
 
-
-
-
-
-
-        
-        
-        
-        
-        unsigned char hash[32];
-        SHA256((unsigned char*)hwid, strlen(hwid), hash);
-
-        unsigned char b64[64];
-        int b64_len = sizeof(b64);
-        Base64Encode(hash, sizeof(hash), b64, &b64_len);
-
-        *infoLen = b64_len;
-
-        memcpy((void*)clientInfo, (void*)b64, *infoLen);
+        status = 0;
+    
+        break;
     }
 
     return status;

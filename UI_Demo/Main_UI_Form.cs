@@ -3,6 +3,7 @@ using SixLabors.ImageSharp.ColorSpaces;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
 using System.Text;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 //using Serilog;
 
 namespace UI_Demo
@@ -63,7 +64,7 @@ namespace UI_Demo
             lblTipo_Cedula.Text = cTIPO_CEDULA;
             lblTipo_Cedula_Val.Text = cTIPO_CEDULA_UNK;
 
-            glb_EdvLibAPi = new(); 
+            glb_EdvLibAPi = new();
 
             glb_EdvLibAPi.Init((x) =>
             {
@@ -105,14 +106,32 @@ namespace UI_Demo
             glb_EdvLibAPi?.Id_Tag__MOC();
         }
 
-        private void btnClearLog_Click(object sender, EventArgs e)  
+        private void btnClearLog_Click(object sender, EventArgs e)
         {
             richTB_Log.Clear();
         }
 
-        private void button1_Click_1(object sender, EventArgs e)   
+        private void button1_Click_1(object sender, EventArgs e)
         {
             glb_EdvLibAPi?.Test_Lector();
+        }
+
+        private void GetLicence_Click(object sender, EventArgs e)
+        {
+            string license = "";
+            string path = @"d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
+
+            if (EdvLibAPi.Get_Client_Info(path, ref license) == 0)
+            {
+                Clipboard.SetText(license);
+
+                MessageBox.Show("Get licence OK","Get licence");
+            }
+            else
+            {
+                MessageBox.Show("Ocurrió un error", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
         }
     }
 }

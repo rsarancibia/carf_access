@@ -30,7 +30,7 @@ namespace Edv__Id_Tag_Access
 
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Edv_Licencia_Get_Client_Info(byte[] clientInfo, ref int infoLen);
+        public static extern int Edv_Licencia_Get_Client_Info(byte[] publickey_path, byte[] clientInfo, ref int infoLen);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void Log_Callback(
@@ -62,11 +62,36 @@ namespace Edv__Id_Tag_Access
         private api_Tag_Type? glb_api_Tag_Type = null;
 
 
-        public string Get_Info_Id()
+        public static int Get_Client_Info(string public_key_path, ref string license)
         {
+            int     status = 0;
+            byte[]  lic = new byte[1024 * 5];
+            int     lic_len = lic.Length;
 
-            return "Rana";
-        
+            try
+            {
+                while (true)
+                {
+                    byte[] file_path = Encoding.UTF8.GetBytes(public_key_path);
+
+                    if (Edv_Licencia_Get_Client_Info(file_path, lic, ref lic_len) == 0)
+                    {
+                        license = Encoding.UTF8.GetString(lic, 0, lic_len);
+                    }
+                    else
+                    {
+                        status = 1;
+                    }
+
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                status = 100;            
+            }
+
+            return status;
         }
 
 
@@ -90,27 +115,31 @@ namespace Edv__Id_Tag_Access
 
                 Log.Information("DLL Init - Start");
 
-                byte[] lic  = new byte[128];
-                int lic_len = lic.Length;
+                //byte[] lic  = new byte[1024 * 5];
+                //int lic_len = lic.Length;
 
-                Edv_Licencia_Get_Client_Info(lic, ref lic_len);
-                Edv_Licencia_Get_Client_Info(lic, ref lic_len);
+                ////Edv_Licencia_Get_Client_Info(lic, ref lic_len);
+                ////Edv_Licencia_Get_Client_Info(lic, ref lic_len);
 
 
-                if (Edv_Licencia_Get_Client_Info(lic, ref lic_len) == 0)
-                {
-                    Log.Logger.HexDump(lic, data_lenght: lic_len, message: "Licencia Info Raw Data");
+                //if (Edv_Licencia_Get_Client_Info(lic, ref lic_len) == 0)
+                //{
 
-                    Log.Information("Calculado : " + b64);
+                //    string texto = Encoding.UTF8.GetString(lic, 0, lic_len);
 
-                }
-                else
-                {
-                    Log.Error("ERROR AL OBTENER DATOS DE CLIENTE");
-                }
+
+                //    Log.Logger.HexDump(lic, data_lenght: lic_len, message: "Licencia Info Raw Data");
+
+                //    Log.Information("Calculado : " + b64);
+
+                //}
+                //else
+                //{
+                //    Log.Error("ERROR AL OBTENER DATOS DE CLIENTE");
+                //}
                 
-                //Edv_Test_Licencia();
-                return 0;
+                ////Edv_Test_Licencia();
+                //return 0;
 
 
 

@@ -17,6 +17,14 @@ EVP_PKEY* load_private_key_from_string(const char* privkey_pem);
 // openssl genpkey -algorithm RSA -out private.pem -pkeyopt rsa_keygen_bits:2048 && openssl pkey -in private.pem -pubout -out public.pem 
 /// </summary>
 
+ 
+
+
+
+
+
+
+
 static const char* TEST_PRIVATE_KEY_PEM_OLD =
 "-----BEGIN PRIVATE KEY-----\n"
 "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCYNjH297Eq7SwC\n"
@@ -251,34 +259,34 @@ cleanup:
 
 int rsa_encrypt(const unsigned char* plaintext, size_t plaintext_len,
     unsigned char* ciphertext, size_t* ciphertext_len,
-    const char* pubkey_string)
+    const char* pubkey_path)
 {
-    //FILE* fp = fopen(pubkey_path, "r");
-    //if (!fp) return -1;
+    FILE* fp = fopen(pubkey_path, "r");
+    if (!fp) return 1;
 
-    //EVP_PKEY* pubkey = PEM_read_PUBKEY(fp, NULL, NULL, NULL);
-    //fclose(fp);
+    EVP_PKEY* pubkey = PEM_read_PUBKEY(fp, NULL, NULL, NULL);
+    fclose(fp);
+    if (!pubkey) return 2;
+
+    //EVP_PKEY* pubkey = load_public_key_from_string(pubkey_string);
     //if (!pubkey) return -2;
-
-    EVP_PKEY* pubkey = load_public_key_from_string(pubkey_string);
-    if (!pubkey) return -2;
 
 
     EVP_PKEY_CTX* ctx = EVP_PKEY_CTX_new(pubkey, NULL);
-    if (!ctx) return -3;
+    if (!ctx) return 3;
 
-    if (EVP_PKEY_encrypt_init(ctx) <= 0) return -4;
+    if (EVP_PKEY_encrypt_init(ctx) <= 0) return 4;
 
     // Usar OAEP (recomendado)
     EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING);
 
     // Primero obtener tamaño
     if (EVP_PKEY_encrypt(ctx, NULL, ciphertext_len, plaintext, plaintext_len) <= 0)
-        return -5;
+        return 5;
 
     // Luego encriptar
     if (EVP_PKEY_encrypt(ctx, ciphertext, ciphertext_len, plaintext, plaintext_len) <= 0)
-        return -6;
+        return 6;
 
     EVP_PKEY_CTX_free(ctx);
     EVP_PKEY_free(pubkey);

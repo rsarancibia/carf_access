@@ -38,6 +38,7 @@
             btnDoMoc = new Button();
             pbDisplay = new PictureBox();
             btnCapture_Img = new Button();
+            GetLicence = new Button();
             tableLayoutPanel1.SuspendLayout();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbDisplay).BeginInit();
@@ -55,20 +56,21 @@
             tableLayoutPanel1.RowCount = 2;
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 56.6666679F));
             tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Percent, 43.3333321F));
-            tableLayoutPanel1.Size = new Size(828, 567);
+            tableLayoutPanel1.Size = new Size(1088, 695);
             tableLayoutPanel1.TabIndex = 0;
             // 
             // richTB_Log
             // 
             richTB_Log.Dock = DockStyle.Fill;
-            richTB_Log.Location = new Point(3, 324);
+            richTB_Log.Location = new Point(3, 396);
             richTB_Log.Name = "richTB_Log";
-            richTB_Log.Size = new Size(822, 240);
+            richTB_Log.Size = new Size(1082, 296);
             richTB_Log.TabIndex = 0;
             richTB_Log.Text = "";
             // 
             // panel1
             // 
+            panel1.Controls.Add(GetLicence);
             panel1.Controls.Add(button1);
             panel1.Controls.Add(btnClearLog);
             panel1.Controls.Add(lblTipo_Cedula_Val);
@@ -79,7 +81,7 @@
             panel1.Dock = DockStyle.Fill;
             panel1.Location = new Point(3, 3);
             panel1.Name = "panel1";
-            panel1.Size = new Size(822, 315);
+            panel1.Size = new Size(1082, 387);
             panel1.TabIndex = 1;
             // 
             // button1
@@ -136,7 +138,7 @@
             // pbDisplay
             // 
             pbDisplay.BorderStyle = BorderStyle.FixedSingle;
-            pbDisplay.Location = new Point(114, 37);
+            pbDisplay.Location = new Point(42, 96);
             pbDisplay.Name = "pbDisplay";
             pbDisplay.Size = new Size(172, 166);
             pbDisplay.SizeMode = PictureBoxSizeMode.Zoom;
@@ -145,7 +147,7 @@
             // 
             // btnCapture_Img
             // 
-            btnCapture_Img.Location = new Point(143, 209);
+            btnCapture_Img.Location = new Point(42, 278);
             btnCapture_Img.Name = "btnCapture_Img";
             btnCapture_Img.Size = new Size(117, 47);
             btnCapture_Img.TabIndex = 0;
@@ -153,11 +155,21 @@
             btnCapture_Img.UseVisualStyleBackColor = true;
             btnCapture_Img.Click += button1_Click;
             // 
+            // GetLicence
+            // 
+            GetLicence.Location = new Point(42, 25);
+            GetLicence.Name = "GetLicence";
+            GetLicence.Size = new Size(117, 23);
+            GetLicence.TabIndex = 7;
+            GetLicence.Text = "Get Lic - Copy";
+            GetLicence.UseVisualStyleBackColor = true;
+            GetLicence.Click += GetLicence_Click;
+            // 
             // Main_UI_Form
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(828, 567);
+            ClientSize = new Size(1088, 695);
             Controls.Add(tableLayoutPanel1);
             Name = "Main_UI_Form";
             Text = "App Demo MOC";
@@ -182,5 +194,6 @@
         private Label lblTipo_Cedula_Val;
         private Button btnClearLog;
         private Button button1;
+        private Button GetLicence;
     }
 }
