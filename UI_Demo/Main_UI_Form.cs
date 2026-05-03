@@ -116,20 +116,23 @@ namespace UI_Demo
             glb_EdvLibAPi?.Test_Lector();
         }
 
-        private void GetLicence_Click(object sender, EventArgs e)
+        private void GetLicense_Click(object sender, EventArgs e)
         {
+            string title = "Get license";
             string license = "";
             string path = @"d:\RProteus\Cedula\carf_access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
 
-            if (EdvLibAPi.Get_Client_Info(path, ref license) == 0)
+            int status = EdvLibAPi.Get_Client_Info(path, ref license);
+
+            if (status == 0)
             {
                 Clipboard.SetText(license);
 
-                MessageBox.Show("Get licence OK","Get licence");
+                MessageBox.Show("Get license OK", title);
             }
             else
             {
-                MessageBox.Show("Ocurrió un error", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("ERROR : No fue posible generar licencia : " + status.ToString(), title, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
         }

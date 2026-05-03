@@ -74,21 +74,18 @@ namespace Edv__Id_Tag_Access
                 {
                     byte[] file_path = Encoding.UTF8.GetBytes(public_key_path);
 
-                    if (Edv_Licencia_Get_Client_Info(file_path, lic, ref lic_len) == 0)
+                    status = Edv_Licencia_Get_Client_Info(file_path, lic, ref lic_len);
+
+                    if (status == 0)
                     {
                         license = Encoding.UTF8.GetString(lic, 0, lic_len);
                     }
-                    else
-                    {
-                        status = 1;
-                    }
-
                     break;
                 }
             }
             catch (Exception ex)
             {
-                status = 100;            
+                status = 1000;            
             }
 
             return status;

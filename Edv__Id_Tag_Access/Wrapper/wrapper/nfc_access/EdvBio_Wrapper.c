@@ -127,6 +127,8 @@ int Edv_Licencia_Get_Client_Info(unsigned char* path_public_key, unsigned char *
         // 3. Se encripta el hash con llave pública.
         // 4. El resultado de encriptación se pasa a base64.
 
+        //status = 120;
+        //break;
 
         // Paso 1            
         status = build_hwid(hwid);
@@ -149,9 +151,17 @@ int Edv_Licencia_Get_Client_Info(unsigned char* path_public_key, unsigned char *
         }
         
         // Paso 3
+        unsigned char baTmp[sizeof(hash) + sizeof(hwid)];
+        int baTmp_Len = sizeof(hash) + strlen(hwid);
+
+        memcpy((void *)baTmp, (void *)hash, sizeof(hash));
+        memcpy((void*)(baTmp + sizeof(hash)), (void*)hwid, strlen(hwid));
+
+        // Paso 3
         size_t len = 0;
 
-        status =  rsa_encrypt(hwid, strlen(hwid), encrypted, &len, path_public_key);
+        //status =  rsa_encrypt(hwid, strlen(hwid), encrypted, &len, path_public_key);
+        status = rsa_encrypt(baTmp, baTmp_Len, encrypted, &len, path_public_key);
         if (status != 0)
         {
             status = 3;

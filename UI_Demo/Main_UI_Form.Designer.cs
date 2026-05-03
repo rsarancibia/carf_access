@@ -163,7 +163,7 @@
             GetLicence.TabIndex = 7;
             GetLicence.Text = "Get Lic - Copy";
             GetLicence.UseVisualStyleBackColor = true;
-            GetLicence.Click += GetLicence_Click;
+            GetLicence.Click += GetLicense_Click;
             // 
             // Main_UI_Form
             // 
