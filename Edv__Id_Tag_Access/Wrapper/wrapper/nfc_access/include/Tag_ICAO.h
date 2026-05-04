@@ -11,24 +11,16 @@
 #define DEFAULT_ICAO_OPUPATION			(char*)"No informada"
 
 #ifdef _WIN32
+#include <windows.h>
+
+
 typedef int	(__cdecl *GETCARD)		(IN void *pDev);
 typedef int	(__cdecl *TRANSMIT)		(IN void *pDev, IN unsigned char *ucpApduCmd, IN long lApduCmdLen, OUT unsigned char *ucpApduRsp, IN OUT long *lpApduRspLen);
 typedef int	(__cdecl *DISCONNECT)	(IN void *pDev);
+
+#define	__delay_ms(ms) Sleep(ms)	
+
 #endif
-
-
-// typedef int (__cdecl *GETCARD)(void *pDev);
-
-// typedef int (__cdecl *TRANSMIT)(
-//     void *pDev,
-//     unsigned char *ucpApduCmd,
-//     long lApduCmdLen,
-//     unsigned char *ucpApduRsp,
-//     long *lpApduRspLen
-// );
-
-// typedef int (__cdecl *DISCONNECT)(void *pDev);
-
 
 enum
 {

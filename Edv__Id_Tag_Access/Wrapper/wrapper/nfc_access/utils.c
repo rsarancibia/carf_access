@@ -20,67 +20,82 @@ void Register_Log_callback(Log_Callback cb)
 
 void PutInLog(void *logger, int iLevel, char *sMsg, ...)
 {
-	char Buffer[1024 * 2];
-	char LogTag[16];
+    char Buffer[1024 * 2];
+    char LogTag[16];
 	 
-	 switch(iLevel)
-	 {
-     case LOG_LEVEL_EMERGENCY:
-			sprintf(LogTag,"EMER");	
-			break;
-	 case LOG_LEVEL_ALERT:
-			sprintf(LogTag,"ALRT");	
-			break;
-	 case LOG_LEVEL_CRITICAL:
-			sprintf(LogTag,"CRIT");	
-			break;
-	 case LOG_LEVEL_ERROR:
-			sprintf(LogTag,"ERR ");	
-			break;
-	 case LOG_LEVEL_WARNING:
-			sprintf(LogTag,"WARN");	
-			break;
-	 case LOG_LEVEL_NOTICE:
-			sprintf(LogTag,"NOTC");	
-			break;
-	 case LOG_LEVEL_INFORMATIONAL:
-			sprintf(LogTag,"INF ");	
-			break;
-	 case LOG_LEVEL_DEBUG:
-			sprintf(LogTag,"DEB ");	
-			break;
-         default:
-			sprintf(LogTag,"UNKW");	
-			break;
-     }
-
-	sprintf(LogTag,"EMER");	
+    switch(iLevel)
+    {
+        case LOG_LEVEL_EMERGENCY:
+            sprintf(LogTag,"EMER");	
+            break;
+        case LOG_LEVEL_ALERT:
+            sprintf(LogTag,"ALRT");	
+            break;
+        case LOG_LEVEL_CRITICAL:
+            sprintf(LogTag,"CRIT");	
+            break;
+        case LOG_LEVEL_ERROR:
+            sprintf(LogTag,"ERR ");	
+            break;
+        case LOG_LEVEL_WARNING:
+            sprintf(LogTag,"WARN");	
+            break;
+        case LOG_LEVEL_NOTICE:
+            sprintf(LogTag,"NOTC");	
+            break;
+        case LOG_LEVEL_INFORMATIONAL:
+            sprintf(LogTag,"INF ");	
+            break;
+        case LOG_LEVEL_DEBUG:
+            sprintf(LogTag,"DEB ");	
+            break;
+        default:
+            sprintf(LogTag,"UNKW");	
+            break;
+    }
 
 			
-	time_t now = time(NULL);
-    
-	struct tm* t = localtime(&now);
+    time_t now = time(NULL);
+  
+    struct tm t;
+    localtime_s(&t, &now);
 
-	sprintf(Buffer, "[%02d:%02d:%02d (WRP) %s] ", t->tm_hour, t->tm_min, t->tm_sec, LogTag);
+    int offset = snprintf(  Buffer, sizeof(Buffer),
+                            "[%02d:%02d:%02d (WRP) %s] ",
+                            t.tm_hour, t.tm_min, t.tm_sec, LogTag);
 
     va_list ap;
     va_start(ap, sMsg);
-	vsprintf(Buffer + strlen(Buffer), sMsg, ap);
+    vsnprintf(Buffer + offset, sizeof(Buffer) - offset, sMsg, ap);
     va_end(ap);
+
 
     //
     // Acá, Buffer contiene el mensaje a mostrar
     // Luego, se puede almacenar en archivo
     //
 
-     //
-     // Envìa a logCat
-     //
+    //
+    // Envìa a logCat
+    //
+    if (g_Log != NULL)
+    {
+#if 1
+        g_Log((unsigned char*)Buffer, (int)strlen(Buffer));
+#else
+        size_t len = strlen(Buffer);
 
-	if(g_Log != NULL)
-	{
-		g_Log(Buffer, strlen(Buffer));
-	}
+        char* safe = (char*)malloc(len + 1);
+        if (safe != NULL)
+        {
+            memcpy(safe, Buffer, len + 1); // incluye \0
+
+            g_Log((unsigned char*)safe, (int)len);
+
+            free(safe);
+        }
+#endif
+    }
 }
 
 

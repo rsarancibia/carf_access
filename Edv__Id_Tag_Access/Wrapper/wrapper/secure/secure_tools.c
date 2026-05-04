@@ -1,45 +1,29 @@
+
+#include <utils.h>
 #include <secure_tools.h>
-
-//#include <windows.h>
-//#include <winhttp.h>
-//#include <time.h>
-//#include <string.h>
-//#include <stdio.h>
-
-
-
-
-//🔐 Tamaño de salida(esto es lo importante)
-//
-//Si tu clave es :
-//
-//2048 bits → 256 bytes
-//3072 bits → 384 bytes
-//4096 bits → 512 bytes
-//
-//👉 Entonces :
-//
-//Firma RSA = tamaño fijo = tamaño de la clave
-
-//🔍 Ejemplo real
-//
-//Con una clave de 2048 bits:
-//
-//data(cualquier tamaño)
-//→ SHA256(interno)
-//→ firma RSA
-//
-//resultado = 256 bytes
-//
-//👉 da lo mismo si DATA1 tiene 10 bytes o 10 KB
-//👉 la firma será siempre 256 bytes
-
-
 
 #pragma comment(lib, "winhttp.lib")
 
-
 #define XOR_KEY 0x5A
+
+#define cFIELD_ENABLE   0xFF
+#define cFIELD_DISABLE  0x00
+#define cUSER_LEN       128
+#define cHWID_LEN       64
+#define cDAYS_LEN       16
+
+typedef struct _ClienLicenseCtrlData
+{
+    unsigned  char User[cUSER_LEN];
+    unsigned  char HwId[cHWID_LEN];
+    unsigned  char Days[cDAYS_LEN];
+
+} ClienLicenseCtrlData;
+
+
+static ClienLicenseCtrlData g_ClientLicenseCtrlData;
+
+
 
 int save_state(const char* path, license_state_t* st)
 {
@@ -78,8 +62,6 @@ int load_state(const char* path, license_state_t* st)
     *st = tmp;
     return 1;
 }
-
-
 
 int get_http_date(char* buffer, DWORD size)
 {
@@ -125,9 +107,6 @@ int get_http_date(char* buffer, DWORD size)
     return ok;
 }
 
-
-
-
 time_t parse_http_date(const char* date_str)
 {
     struct tm tm = { 0 };
@@ -155,203 +134,247 @@ time_t parse_http_date(const char* date_str)
 }
 
 
-#define LICENSE_OK           0
-#define LICENSE_INVALID      1
-#define LICENSE_EXPIRED      2
-#define LICENSE_ROLLBACK     3
-#define LICENSE_NO_TIME      4
-
-int validate_license(const char* state_path, uint64_t expiry_time)
+int Add_Client_License_Info(unsigned char* buffer_in)
 {
-    license_state_t st = { 0 };
-    load_state(state_path, &st);
-
-    char date[128] = { 0 };
-    uint64_t current_time = 0;
-
-    if (get_http_date(date, sizeof(date)))
+    int status = 0;
+    
+    while (TRUE)
     {
-        time_t t = parse_http_date(date);
-        if (t > 0)
-            current_time = (uint64_t)t;
-    }
-
-    // fallback si no hay internet
-    if (current_time == 0)
-        current_time = st.last_valid_time;
-
-    // primera ejecución
-    if (st.last_valid_time == 0)
-        st.last_valid_time = current_time;
-
-    // 🔴 rollback detection
-    if (current_time < st.last_valid_time)
-        return LICENSE_ROLLBACK;
-
-    // actualizar tiempo confiable
-    if (current_time > st.last_valid_time)
-        st.last_valid_time = current_time;
-
-    // ⏳ expiración
-    if (current_time > expiry_time)
-        return LICENSE_EXPIRED;
-
-    save_state(state_path, &st);
-
-    return LICENSE_OK;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-//#include <stdint.h>
-//#include <string.h>
-//#include <time.h>
-
-// ============================
-// ESTRUCTURA INTERNA
-// ============================
-
-typedef struct
-{
-    uint64_t expiry_time;
-    uint8_t  hwid_hash[32];   // opcional
-    uint32_t flags;           // opcional
-} license_info_t;
-
-
-// ============================
-// HOOKS QUE TÚ IMPLEMENTAS
-// ============================
-
-// 🔐 1. Base64 decode
-int decode_base64(const char* input, uint8_t* output, int* out_len)
-{
-    // TODO: implementar
-    return 0;
-}
-
-// 🔐 2. Verificación de firma
-int verify_signature(const uint8_t* data, int data_len,
-    const uint8_t* sig, int sig_len)
-{
-    // TODO: implementar (OpenSSL / propia)
-    return 0;
-}
-
-// 🔐 3. Parseo de licencia
-int parse_license(const uint8_t* data, int data_len, license_info_t* info)
-{
-    // TODO: implementar
-    return 0;
-}
-
-
-// ============================
-// TIEMPO INTERNET (ya lo tienes)
-// ============================
-
-extern int get_http_date(char* buffer, DWORD size);
-extern time_t parse_http_date(const char* date_str);
-
-
-// ============================
-// FALLBACK OFFLINE (sin archivo visible)
-// ============================
-
-int load_cached_time(uint64_t* t)
-{
-    // TODO: puedes usar:
-    // - registry
-    // - memoria ofuscada
-    // - múltiples ubicaciones
-    return 0;
-}
-
-int save_cached_time(uint64_t t)
-{
-    // TODO: idem
-    return 0;
-}
-
-
-// ============================
-// FUNCIÓN PRINCIPAL
-// ============================
-
-int ValidateLicenseString(const char* license_b64)
-{
-    uint8_t decoded[2048];
-    int decoded_len = 0;
-
-    // 1. Base64 decode
-    if (!decode_base64(license_b64, decoded, &decoded_len))
-        return LICENSE_INVALID;
-
-    // ----------------------------
-    // 2. Separar DATA y SIGNATURE
-    // ----------------------------
-    // 👉 EJEMPLO: últimos 256 bytes = firma RSA
-    int sig_len = 256;
-    if (decoded_len <= sig_len)
-        return LICENSE_INVALID;
-
-    uint8_t* data = decoded;
-    int data_len = decoded_len - sig_len;
-
-    uint8_t* sig = decoded + data_len;
-
-    // 3. Verificar firma
-    if (!verify_signature(data, data_len, sig, sig_len))
-        return LICENSE_INVALID;
-
-    // 4. Parsear licencia
-    license_info_t lic = { 0 };
-
-    if (!parse_license(data, data_len, &lic))
-        return LICENSE_INVALID;
-
-    // ----------------------------
-    // 5. Obtener tiempo confiable
-    // ----------------------------
-    char date[128] = { 0 };
-    uint64_t current_time = 0;
-
-    if (get_http_date(date, sizeof(date)))
-    {
-        time_t t = parse_http_date(date);
-        if (t > 0)
-            current_time = (uint64_t)t;
-    }
-
-    // ----------------------------
-    // 6. Fallback offline
-    // ----------------------------
-    if (current_time == 0)
-    {
-        uint64_t cached = 0;
-
-        if (load_cached_time(&cached) && cached > 0)
+        if(buffer_in == NULL)
         {
-            current_time = cached;
-        }
-        else
-        {
-            return LICENSE_NO_TIME;
-        }
-    }
-    else
-    {
-        // guardar último tiempo válido
-        save_cached_time(current_time);
+            status = 1;
+            break;
+		}   
+        
+        memcpy((void *)g_ClientLicenseCtrlData.User, buffer_in, cUSER_LEN);
+
+        memcpy((void*)g_ClientLicenseCtrlData.HwId, buffer_in + cUSER_LEN, cHWID_LEN);
+    
+        memcpy((void*)g_ClientLicenseCtrlData.Days, buffer_in + cUSER_LEN + cHWID_LEN, cDAYS_LEN);
+
+        break;
     }
 
-    // ----------------------------
-    // 7. Validar expiración
-    // ----------------------------
-    if (current_time > lic.expiry_time)
-        return LICENSE_EXPIRED;
+    PutInLog(NULL, 0, "LIC USER");
+    DisplayHex(0, g_ClientLicenseCtrlData.User, cUSER_LEN);
+    PutInLog(NULL, 0, "LIC HWID");
+    DisplayHex(0, g_ClientLicenseCtrlData.HwId, cHWID_LEN);
+    PutInLog(NULL, 0, "LIC DAYS");
+    DisplayHex(0, g_ClientLicenseCtrlData.Days, cDAYS_LEN);
 
-    return LICENSE_OK;
+    return status;
 }
+
+
+int Validate_MRZ()
+{
+
+
+
+
+    return 0;
+}
+
+
+
+//
+//#define LICENSE_OK           0
+//#define LICENSE_INVALID      1
+//#define LICENSE_EXPIRED      2
+//#define LICENSE_ROLLBACK     3
+//#define LICENSE_NO_TIME      4
+//
+//int validate_license(const char* state_path, uint64_t expiry_time)
+//{
+//    license_state_t st = { 0 };
+//    load_state(state_path, &st);
+//
+//    char date[128] = { 0 };
+//    uint64_t current_time = 0;
+//
+//    if (get_http_date(date, sizeof(date)))
+//    {
+//        time_t t = parse_http_date(date);
+//        if (t > 0)
+//            current_time = (uint64_t)t;
+//    }
+//
+//    // fallback si no hay internet
+//    if (current_time == 0)
+//        current_time = st.last_valid_time;
+//
+//    // primera ejecución
+//    if (st.last_valid_time == 0)
+//        st.last_valid_time = current_time;
+//
+//    // 🔴 rollback detection
+//    if (current_time < st.last_valid_time)
+//        return LICENSE_ROLLBACK;
+//
+//    // actualizar tiempo confiable
+//    if (current_time > st.last_valid_time)
+//        st.last_valid_time = current_time;
+//
+//    // ⏳ expiración
+//    if (current_time > expiry_time)
+//        return LICENSE_EXPIRED;
+//
+//    save_state(state_path, &st);
+//
+//    return LICENSE_OK;
+//}
+//
+//////////////////////////////////////////////////////////////////////////////////////////////////
+//
+////#include <stdint.h>
+////#include <string.h>
+////#include <time.h>
+//
+//// ============================
+//// ESTRUCTURA INTERNA
+//// ============================
+//
+//typedef struct
+//{
+//    uint64_t expiry_time;
+//    uint8_t  hwid_hash[32];   // opcional
+//    uint32_t flags;           // opcional
+//} license_info_t;
+//
+//
+//// ============================
+//// HOOKS QUE TÚ IMPLEMENTAS
+//// ============================
+//
+//// 🔐 1. Base64 decode
+//int decode_base64(const char* input, uint8_t* output, int* out_len)
+//{
+//    // TODO: implementar
+//    return 0;
+//}
+//
+//// 🔐 2. Verificación de firma
+//int verify_signature(const uint8_t* data, int data_len,
+//    const uint8_t* sig, int sig_len)
+//{
+//    // TODO: implementar (OpenSSL / propia)
+//    return 0;
+//}
+//
+//// 🔐 3. Parseo de licencia
+//int parse_license(const uint8_t* data, int data_len, license_info_t* info)
+//{
+//    // TODO: implementar
+//    return 0;
+//}
+//
+//
+//// ============================
+//// TIEMPO INTERNET (ya lo tienes)
+//// ============================
+//
+//extern int get_http_date(char* buffer, DWORD size);
+//extern time_t parse_http_date(const char* date_str);
+//
+//
+//// ============================
+//// FALLBACK OFFLINE (sin archivo visible)
+//// ============================
+//
+//int load_cached_time(uint64_t* t)
+//{
+//    // TODO: puedes usar:
+//    // - registry
+//    // - memoria ofuscada
+//    // - múltiples ubicaciones
+//    return 0;
+//}
+//
+//int save_cached_time(uint64_t t)
+//{
+//    // TODO: idem
+//    return 0;
+//}
+//
+//
+//// ============================
+//// FUNCIÓN PRINCIPAL
+//// ============================
+//
+//int ValidateLicenseString(const char* license_b64)
+//{
+//    uint8_t decoded[2048];
+//    int decoded_len = 0;
+//
+//    // 1. Base64 decode
+//    if (!decode_base64(license_b64, decoded, &decoded_len))
+//        return LICENSE_INVALID;
+//
+//    // ----------------------------
+//    // 2. Separar DATA y SIGNATURE
+//    // ----------------------------
+//    // 👉 EJEMPLO: últimos 256 bytes = firma RSA
+//    int sig_len = 256;
+//    if (decoded_len <= sig_len)
+//        return LICENSE_INVALID;
+//
+//    uint8_t* data = decoded;
+//    int data_len = decoded_len - sig_len;
+//
+//    uint8_t* sig = decoded + data_len;
+//
+//    // 3. Verificar firma
+//    if (!verify_signature(data, data_len, sig, sig_len))
+//        return LICENSE_INVALID;
+//
+//    // 4. Parsear licencia
+//    license_info_t lic = { 0 };
+//
+//    if (!parse_license(data, data_len, &lic))
+//        return LICENSE_INVALID;
+//
+//    // ----------------------------
+//    // 5. Obtener tiempo confiable
+//    // ----------------------------
+//    char date[128] = { 0 };
+//    uint64_t current_time = 0;
+//
+//    if (get_http_date(date, sizeof(date)))
+//    {
+//        time_t t = parse_http_date(date);
+//        if (t > 0)
+//            current_time = (uint64_t)t;
+//    }
+//
+//    // ----------------------------
+//    // 6. Fallback offline
+//    // ----------------------------
+//    if (current_time == 0)
+//    {
+//        uint64_t cached = 0;
+//
+//        if (load_cached_time(&cached) && cached > 0)
+//        {
+//            current_time = cached;
+//        }
+//        else
+//        {
+//            return LICENSE_NO_TIME;
+//        }
+//    }
+//    else
+//    {
+//        // guardar último tiempo válido
+//        save_cached_time(current_time);
+//    }
+//
+//    // ----------------------------
+//    // 7. Validar expiración
+//    // ----------------------------
+//    if (current_time > lic.expiry_time)
+//        return LICENSE_EXPIRED;
+//
+//    return LICENSE_OK;
+//}
 
 

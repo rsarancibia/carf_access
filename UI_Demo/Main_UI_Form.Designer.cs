@@ -31,6 +31,7 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             richTB_Log = new RichTextBox();
             panel1 = new Panel();
+            GetLicence = new Button();
             button1 = new Button();
             btnClearLog = new Button();
             lblTipo_Cedula_Val = new Label();
@@ -38,7 +39,8 @@
             btnDoMoc = new Button();
             pbDisplay = new PictureBox();
             btnCapture_Img = new Button();
-            GetLicence = new Button();
+            btnCnnnect_AppIcao_0 = new Button();
+            btnCnnnect_AppIcao_1 = new Button();
             tableLayoutPanel1.SuspendLayout();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbDisplay).BeginInit();
@@ -70,6 +72,8 @@
             // 
             // panel1
             // 
+            panel1.Controls.Add(btnCnnnect_AppIcao_1);
+            panel1.Controls.Add(btnCnnnect_AppIcao_0);
             panel1.Controls.Add(GetLicence);
             panel1.Controls.Add(button1);
             panel1.Controls.Add(btnClearLog);
@@ -83,6 +87,16 @@
             panel1.Name = "panel1";
             panel1.Size = new Size(1082, 387);
             panel1.TabIndex = 1;
+            // 
+            // GetLicence
+            // 
+            GetLicence.Location = new Point(42, 25);
+            GetLicence.Name = "GetLicence";
+            GetLicence.Size = new Size(117, 23);
+            GetLicence.TabIndex = 7;
+            GetLicence.Text = "Get Lic - Copy";
+            GetLicence.UseVisualStyleBackColor = true;
+            GetLicence.Click += GetLicense_Click;
             // 
             // button1
             // 
@@ -155,15 +169,25 @@
             btnCapture_Img.UseVisualStyleBackColor = true;
             btnCapture_Img.Click += button1_Click;
             // 
-            // GetLicence
+            // btnCnnnect_AppIcao_0
             // 
-            GetLicence.Location = new Point(42, 25);
-            GetLicence.Name = "GetLicence";
-            GetLicence.Size = new Size(117, 23);
-            GetLicence.TabIndex = 7;
-            GetLicence.Text = "Get Lic - Copy";
-            GetLicence.UseVisualStyleBackColor = true;
-            GetLicence.Click += GetLicense_Click;
+            btnCnnnect_AppIcao_0.Location = new Point(849, 117);
+            btnCnnnect_AppIcao_0.Name = "btnCnnnect_AppIcao_0";
+            btnCnnnect_AppIcao_0.Size = new Size(95, 35);
+            btnCnnnect_AppIcao_0.TabIndex = 8;
+            btnCnnnect_AppIcao_0.Text = "Conn App 0";
+            btnCnnnect_AppIcao_0.UseVisualStyleBackColor = true;
+            btnCnnnect_AppIcao_0.Click += btnCnnnect_AppIcao_0_Click;
+            // 
+            // btnCnnnect_AppIcao_1
+            // 
+            btnCnnnect_AppIcao_1.Location = new Point(855, 169);
+            btnCnnnect_AppIcao_1.Name = "btnCnnnect_AppIcao_1";
+            btnCnnnect_AppIcao_1.Size = new Size(89, 42);
+            btnCnnnect_AppIcao_1.TabIndex = 9;
+            btnCnnnect_AppIcao_1.Text = "Conn App 1";
+            btnCnnnect_AppIcao_1.UseVisualStyleBackColor = true;
+            btnCnnnect_AppIcao_1.Click += btnCnnnect_AppIcao_1_Click;
             // 
             // Main_UI_Form
             // 
@@ -195,5 +219,7 @@
         private Button btnClearLog;
         private Button button1;
         private Button GetLicence;
+        private Button btnCnnnect_AppIcao_1;
+        private Button btnCnnnect_AppIcao_0;
     }
 }

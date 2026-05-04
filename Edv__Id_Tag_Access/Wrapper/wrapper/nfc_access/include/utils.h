@@ -23,15 +23,12 @@ enum
     LOG_LEVEL_DEBUG         = 7
 };
 
-typedef int (*Log_Callback)(
-    unsigned char* infoBuffer,
+typedef void (*Log_Callback)(
+    const unsigned char* infoBuffer,
     int infoBufferLen
-);
+    );
 
 typedef void* stLoggerPtr;
-
-//void Register_Log_callback(Log_Callback cb);
-
 
 
 void PutInLog(void *logger, int iLevel, char *sMsg, ...);

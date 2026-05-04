@@ -7,12 +7,8 @@
 #include <eac/eac.h>
 #include <eac/pace.h>
 #include <openssl/bio.h>
-
-
 #include <misc.h>
 #include <BIoGetData.h>
-
-
 
 //#define _FOR_BECH		// Workaround for BECH. The don't expect BIO_ERROR_MOC_LOCKED in MOC, so it returns ok if card is bloqued.
 
@@ -2277,12 +2273,7 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	if (iIsOld == 0)
 	{
 		// PACE
-
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"PASEEEEEEEEEEEEEEEEE 1!!!!!!");
-
+		
 		//	Update ICAO key
 		/////////////////////////////////////////////////////////////////////////
 		// RAFA RAFA RAFA RAFA
@@ -2398,7 +2389,10 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 
 
 		// Get Doc MRZ from QR
-		const char sMrz[91];
+		//////////////////////////////////////////////////////////////////
+		// RAFA RAFA RAFA RAFA
+		//const char sMrz[91]; ??????????
+		char sMrz[91];
 		memset((void *)sMrz, 0, sizeof(sMrz));
 		memset((void *)sMrz, '<', sizeof(sMrz) - 1);
 		memcpy_s((void *)(sMrz + 5), sizeof(sMrz) - 5, opSICAO->sICAOKey, 10);
@@ -2797,7 +2791,7 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		//if (udateICAOkey(opSICAO) != ICAO_ERROR_NO_ERROR)
 		//{
 		//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Update ICAO key [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		//	goto JMP_connectcard; poto
+		//	goto JMP_connectcard; 
 		//}
 		///////////////////////////////////////////////////////////////////////
 		// RAFA RAFA RAFA 
@@ -4502,7 +4496,7 @@ long				lTmpError = BIO_ERROR_NO_ERROR;
 
 long			lInitialTime;
 long			lActualTime;
-int				iTimeout = 10000;
+int				iTimeout = 5000;
 
 	pSBIO = opSICAO->pSBIO;
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
@@ -4594,33 +4588,29 @@ int				iTimeout = 10000;
 	//PutInLog(pLogger, LOG_LEVEL_INFORMATIONAL, (char*)"ICAO - MOC - Using Test Template [%ld]", iIsoCTemplateLen);
 	//// TEST TEMPLATE - OUT
 	
+	lInitialTime = GetTickCount();
+	do
+	{
+		// Check presence and get SmartCard
+		pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
+		lActualTime = GetTickCount();
+	
+		__delay_ms(100);
 
-	///////////////////////////////////////////////////////////////////////////
-	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
-	//lInitialTime = GetTickCount();
-	//do
-	//{
-	//	// Check presence and get SmartCard
-	//	pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
-	//	lActualTime = GetTickCount();
-	//} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout);
+	} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout);
 
-	//if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
-	//{
-	//	pSBIO->lError = ICAO_ERROR_NO_CARD_AVAILABLE;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-	//	goto JMP_matchOnCard;
-	//}
-	//else if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
-	//{
-	//	pSBIO->lError = ICAO_ERROR_MOC_GETCARD;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-	//	goto JMP_matchOnCard;
-	//}
-	///////////////////////////////////////////////////////////////////////////
-	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
-
-
+	if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
+	{
+		pSBIO->lError = ICAO_ERROR_NO_CARD_AVAILABLE;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR SmartCard Not Available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_matchOnCard;
+	}
+	else if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
+	{
+		pSBIO->lError = ICAO_ERROR_MOC_GETCARD;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Get SmartCard [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+		goto JMP_matchOnCard;
+	}
 
 	while(iPinNotFoundBugRetryCount < 3)
 	{
@@ -4925,17 +4915,12 @@ JMP_matchOnCard:
 	
 	lTmpError = pSBIO->lError;
 
-	///////////////////////////////////////////////////////////////////////////
-	// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
-	//pSBIO->lReturn = opSICAO->fn_Disconnect(pTmpDev);
-	//if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
-	//{
-	//	pSBIO->lError = ICAO_ERROR_MOC_DISCONNECT;
-	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Disconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-	//}
-	///////////////////////////////////////////////////////////////////////////
-// RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA RAFA 
-
+	pSBIO->lReturn = opSICAO->fn_Disconnect(pTmpDev);
+	if(pSBIO->lReturn != SMARTCARD_ERROR_NO_ERROR)
+	{
+		pSBIO->lError = ICAO_ERROR_MOC_DISCONNECT;
+		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - MOC - ERROR Disconnect [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	}
 
 	pSBIO->lError = lTmpError;
 

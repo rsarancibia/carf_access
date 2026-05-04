@@ -16,11 +16,14 @@ void	sBioSetTemplate(unsigned char *template, int template_len)
     }
 
     memcpy(g_Template_ISO19794, template, template_len);
+    
     g_Template_ISO19794_Len = template_len; 
 
-    PutInLog(NULL, LOG_LEVEL_NOTICE, (char*)"TEMPLATE RECIBIDO !!!!!"); 
+    PutInLog(NULL, LOG_LEVEL_NOTICE, "TEMPLATE RECIBIDO -> Len %d!!!!!", g_Template_ISO19794_Len); 
 
-    DisplayHex(LOG_LEVEL_NOTICE, g_Template_ISO19794, 16); 
+    PutInLog(NULL, LOG_LEVEL_NOTICE, "TEMPLATE RECIBIDO!!!!!");
+
+    //DisplayHex(LOG_LEVEL_NOTICE, g_Template_ISO19794, 16); 
 
 
 }

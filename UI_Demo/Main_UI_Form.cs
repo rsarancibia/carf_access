@@ -10,6 +10,9 @@ namespace UI_Demo
 {
     public partial class Main_UI_Form : Form
     {
+
+        private string g_Public_Key_Path = @"i:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
+
         //[DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         //public static extern void Register_Log_callback(Log_Callback cb);
 
@@ -69,7 +72,7 @@ namespace UI_Demo
             glb_EdvLibAPi.Init((x) =>
             {
                 lblTipo_Cedula_Val.Text = x;
-            });
+            }, g_Public_Key_Path);
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -114,15 +117,18 @@ namespace UI_Demo
         private void button1_Click_1(object sender, EventArgs e)
         {
             glb_EdvLibAPi?.Test_Lector();
+
+            //glb_EdvLibAPi?.Id_Tag__MOC();
+
         }
 
         private void GetLicense_Click(object sender, EventArgs e)
         {
             string title = "Get license";
             string license = "";
-            string path = @"i:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
 
-            int status = EdvLibAPi.Get_Client_Info(path, ref license);
+
+            int status = EdvLibAPi.Get_Client_Info(g_Public_Key_Path, ref license);
 
             if (status == 0)
             {
@@ -135,6 +141,17 @@ namespace UI_Demo
                 MessageBox.Show("ERROR : No fue posible generar licencia : " + status.ToString(), title, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
+        }
+
+        private void btnCnnnect_AppIcao_0_Click(object sender, EventArgs e)
+        {
+           
+            glb_EdvLibAPi?.Prueba_Connect_appIcao(0);
+        }
+
+        private void btnCnnnect_AppIcao_1_Click(object sender, EventArgs e)
+        {
+            glb_EdvLibAPi?.Prueba_Connect_appIcao(1);
         }
     }
 }

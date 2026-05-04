@@ -15,13 +15,12 @@ namespace Edv__Id_Tag_Access
 {
     public class EdvLibAPi
     {
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int Edv_Prueba_Connect(int appIcao);
+
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Add_User_License(byte[] path_license);
-
-
-        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void Edv_Test_Licencia();
+        public static extern int Edv_License__Add_License(byte[] path_license, byte[] path_public_key);
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr PACE_CreateSecret(byte[] secret, int len);
@@ -43,7 +42,9 @@ namespace Edv__Id_Tag_Access
             int infoBufferLen
         );
 
-        private static Log_Callback? _Log_Callback_Ref;
+        // Documentaciòn dice "Ocupar referencias, no llamadas directas"
+        // porque el GC podría recolectar el delegado y dejar un puntero colgando en el lado nativo, lo que causaría un crash al intentar llamar al callback.
+        private static Log_Callback _Log_Callback_Ref = Log_Fnc;
 
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -65,6 +66,27 @@ namespace Edv__Id_Tag_Access
         public delegate void api_Tag_Type(string tag_type);
 
         private api_Tag_Type? glb_api_Tag_Type = null;
+
+
+        public int Prueba_Connect_appIcao(int appIcao)
+        {
+            int status = 0;
+
+            try
+            {
+                bool tag_on_field = false;
+                glb_Nfc_Reader?.Detect_Card(ref tag_on_field);
+
+                status = Edv_Prueba_Connect(appIcao);
+
+            }
+            catch (Exception ex)
+            {
+                status = 100;
+            }
+
+            return status;
+        }   
 
 
         public static int Get_Client_Info(string public_key_path, ref string license)
@@ -97,7 +119,7 @@ namespace Edv__Id_Tag_Access
         }
 
 
-        public int Init(api_Tag_Type tag_type)
+        public int Init(api_Tag_Type tag_type, string public_key_path)
         {
             int status = 0;
             int res = 0;
@@ -113,16 +135,13 @@ namespace Edv__Id_Tag_Access
             {
                 LoggerConfig.Init();
 
-                Register_Log_callback(Log_Fnc);
+                Register_Log_callback(_Log_Callback_Ref);
 
                 Log.Information("DLL Init - Start");
 
-
                 string path_license = "licenciaUser.bin";
 
-                Add_User_License(Encoding.UTF8.GetBytes(path_license + "\0"));
-
-
+                Edv_License__Add_License(Encoding.UTF8.GetBytes(path_license + "\0"), Encoding.UTF8.GetBytes(public_key_path + "\0"));
 
                 //byte[] lic  = new byte[1024 * 5];
                 //int lic_len = lic.Length;
@@ -199,7 +218,7 @@ namespace Edv__Id_Tag_Access
                 {
                     glb_Cedula_IO = new();
 
-                    glb_Cedula_IO.SetIO(glb_Nfc_Reader.Detect_Card, glb_Nfc_Reader.IO, (x) => glb_api_Tag_Type(x));
+                    glb_Cedula_IO.SetIO(glb_Nfc_Reader.Detect_Card, glb_Nfc_Reader.Disconnect_Card, glb_Nfc_Reader.IO, (x) => glb_api_Tag_Type(x));
                 }
 
                 break;
@@ -214,11 +233,18 @@ namespace Edv__Id_Tag_Access
         { 
             if (glb_Cedula_IO is not null)
             {
-                //Cedula_IO.Test_Reader();
+                try {
 
-                glb_Nfc_Reader?.Detect_Card();
+                    //bool tag_on_field = false;
 
-                Edv_Moc(Cedula_Info.baNumeroDocumento, Cedula_Info.baFechaNacimiento, Cedula_Info.baFechaExpiracion);
+                    //glb_Nfc_Reader?.Detect_Card(ref tag_on_field);
+
+                    Edv_Moc(Cedula_Info.baNumeroDocumento, Cedula_Info.baFechaNacimiento, Cedula_Info.baFechaExpiracion);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Error en Test_Lector: " + ex.Message);
+                }
             }
         }
 
@@ -241,7 +267,7 @@ namespace Edv__Id_Tag_Access
                     break;
                 }
 
-                glb_Cedula_IO.MOC();
+                
 
                 break;
             }
@@ -291,9 +317,16 @@ namespace Edv__Id_Tag_Access
                     break;
                 }
 
-                Edv_Set_Template(iso_compact, iso_compact.Length);
+                try
+                {
+                    Edv_Set_Template(iso_compact, iso_compact.Length);
+                } catch(Exception e) { 
+                
+                    int x = 0;
+                };
+                
 
-                Log.Logger.HexDump(iso_compact,data_lenght : 16);
+                //Log.Logger.HexDump(iso_compact,data_lenght : 16);
 
                 break;
             }
@@ -363,7 +396,7 @@ namespace Edv__Id_Tag_Access
             Log.Information("DLL End - Done");
         }
 
-        private void Log_Fnc(IntPtr buffer, int bufferLen)
+        private void Log_Fnc_old(IntPtr buffer, int bufferLen)
         {
             // Copiar TX desde puntero nativo → array .NET
             byte[] managedTx = new byte[bufferLen];
@@ -374,7 +407,25 @@ namespace Edv__Id_Tag_Access
             Log.Information(s);
         }
 
+        private static void Log_Fnc(IntPtr buffer, int len)
+        {
+            try
+            {
+                byte[] data = new byte[len];
+                Marshal.Copy(buffer, data, 0, len);
 
+                string msg = Encoding.ASCII.GetString(data);
+
+                Console.WriteLine(msg);
+
+                Log.Information(msg);
+            }
+            catch (Exception ex)
+            {
+                // ⚠️ NUNCA dejes que esto escape
+                Console.WriteLine("ERROR en callback: " + ex.Message);
+            }
+        }
 
 
         /// <summary>

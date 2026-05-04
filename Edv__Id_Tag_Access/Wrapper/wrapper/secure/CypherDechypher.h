@@ -12,4 +12,7 @@ int rsa_decrypt(const unsigned char* ciphertext, size_t ciphertext_len,
     unsigned char* plaintext, size_t* plaintext_len,
     const char* privkey_path);
 
+int Add_User_License(unsigned char* path_license, unsigned char* path_public_key);
+
+
 #endif

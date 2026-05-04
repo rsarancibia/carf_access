@@ -18,9 +18,7 @@ typedef struct
 
 int load_state(const char* path, license_state_t* st);
 int save_state(const char* path, license_state_t* st);
-
-
 int get_http_date(char* buffer, DWORD size);
-
+int Add_Client_License_Info(unsigned char* buffer_in);
 
 #endif

@@ -6,11 +6,11 @@ namespace Edv__Id_Tag_Access.Devices.NFC
 {
     internal class NFC_Reader
     {
-        SCardReader? glb_Reader = null;
-        string? glb_ReaderName = null;
+        SCardReader?    g_oReader = null;
+        string?         g_ReaderName = null;
 
-        byte[] glb_IO_RecvBuffer = new byte[256];
-        int glb_IO_RecvBuffer_Total_Bytes = 0;
+        byte[]          g_IO_RecvBuffer = new byte[256];
+        int             g_IO_RecvBuffer_Total_Bytes = 0;
 
         public NFC_Reader()
         {
@@ -18,8 +18,22 @@ namespace Edv__Id_Tag_Access.Devices.NFC
 
         public int Init(string reader_name)
         {
-            glb_ReaderName = reader_name;
-            return 0;
+            int status = 0;
+
+            g_ReaderName = reader_name;
+
+            try
+            {
+                var context = ContextFactory.Instance.Establish(SCardScope.System);
+
+                g_oReader = new SCardReader(context);
+            }
+            catch (Exception ex)
+            {
+                status = 100;
+            }
+
+            return status;
         }
 
         public static int Show_Reader()
@@ -48,38 +62,64 @@ namespace Edv__Id_Tag_Access.Devices.NFC
         {
             try
             {
-                if (glb_Reader != null)
+                Disconnect_Card();
+                g_oReader = null;
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+
+
+        public int Detect_Card(ref bool tag_on_field)
+        {
+            int status      = 0;
+            
+            tag_on_field    = false;
+
+            try
+            {
+                if (g_oReader is not null)
                 {
-                    glb_Reader.Disconnect(SCardReaderDisposition.Leave);
-                    glb_Reader = null;
+                    var rc = g_oReader.Connect( g_ReaderName,
+                                                SCardShareMode.Shared,
+                                                SCardProtocol.Any);
+
+                    if (rc != SCardError.Success)
+                    {
+                        tag_on_field = false;
+                    }
+                    else
+                    {
+                        tag_on_field = true;
+                    }
+                }
+                else
+                {
+                    status = 1;
                 }
             }
             catch (Exception ex)
             {
-                // Log.Error(ex.ToString());
+                status = 100;
             }
+
+            return status;
         }
 
 
-        public int Detect_Card()
+        public int Disconnect_Card()
         {
-            var context = ContextFactory.Instance.Establish(SCardScope.System);
-
-            glb_Reader = new SCardReader(context);
-
-            var rc = glb_Reader.Connect(glb_ReaderName,
-                SCardShareMode.Shared,
-                SCardProtocol.Any);
-
-            if (rc != SCardError.Success)
+            if (g_oReader != null)
             {
-                Log.Error("Error conectando");
-                return 1;
+                g_oReader.Disconnect(SCardReaderDisposition.Leave);
             }
 
-            Log.Information("Tarjeta conectada!");
             return 0;
         }
+
+
+
 
         public int IO(byte[] sendBuffer, int sendBufferLength, byte[] receiveData, ref int receiveDataLength, ref ushort sw1sw2)
         {
@@ -89,7 +129,7 @@ namespace Edv__Id_Tag_Access.Devices.NFC
             {
                 try
                 {
-                    if (glb_Reader is null)
+                    if (g_oReader is null)
                     {
                         status = 1;
                         break;
@@ -97,10 +137,10 @@ namespace Edv__Id_Tag_Access.Devices.NFC
 
                     Log.Logger.HexDump(sendBuffer, data_lenght: sendBufferLength, message: "APDU Tx Data : ");
 
-                    glb_IO_RecvBuffer_Total_Bytes = receiveData.Length; // Si no se indica esto, NO FUNCIONA !
+                    g_IO_RecvBuffer_Total_Bytes = receiveData.Length; // Si no se indica esto, NO FUNCIONA !
 
 
-                    SCardError rc = glb_Reader.Transmit(sendBuffer, sendBufferLength, glb_IO_RecvBuffer, ref glb_IO_RecvBuffer_Total_Bytes);
+                    SCardError rc = g_oReader.Transmit(sendBuffer, sendBufferLength, g_IO_RecvBuffer, ref g_IO_RecvBuffer_Total_Bytes);
                     if (rc != SCardError.Success)
                     {
                         Log.Error("Error transmitiendo: " + rc);
@@ -108,23 +148,23 @@ namespace Edv__Id_Tag_Access.Devices.NFC
                         break;
                     }
 
-                    if (glb_IO_RecvBuffer_Total_Bytes < 2)
+                    if (g_IO_RecvBuffer_Total_Bytes < 2)
                     {
                         Log.Error("Error en respuesta : Ans Len < 2");
                         status = 3;
                         break;
                     }
 
-                    Log.Logger.HexDump(glb_IO_RecvBuffer, data_lenght: glb_IO_RecvBuffer_Total_Bytes, message: "APDU Rx Data : ");
+                    Log.Logger.HexDump(g_IO_RecvBuffer, data_lenght: g_IO_RecvBuffer_Total_Bytes, message: "APDU Rx Data : ");
 
-                    receiveDataLength = glb_IO_RecvBuffer_Total_Bytes - 2;
+                    receiveDataLength = g_IO_RecvBuffer_Total_Bytes - 2;
 
                     if (receiveDataLength != 0)
                     {
-                        Array.Copy(glb_IO_RecvBuffer, 0, receiveData, 0, receiveDataLength);
+                        Array.Copy(g_IO_RecvBuffer, 0, receiveData, 0, receiveDataLength);
                     }
 
-                    sw1sw2 = (ushort)((glb_IO_RecvBuffer[glb_IO_RecvBuffer_Total_Bytes - 2] << 8) | glb_IO_RecvBuffer[glb_IO_RecvBuffer_Total_Bytes - 1]);
+                    sw1sw2 = (ushort)((g_IO_RecvBuffer[g_IO_RecvBuffer_Total_Bytes - 2] << 8) | g_IO_RecvBuffer[g_IO_RecvBuffer_Total_Bytes - 1]);
 
                     Log.Information(string.Format("Sw1Sw2 : 0x{0:X4}", sw1sw2));
 
