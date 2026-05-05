@@ -62,6 +62,9 @@ namespace UI_Demo
                     rtb.SelectionStart = rtb.Text.Length;
                     rtb.ScrollToCaret();
                 });
+
+                //rtb.Invalidate(); // rana
+
             };
         }
 

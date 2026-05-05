@@ -1,68 +1,82 @@
 using Edv__Id_Tag_Access;
-using SixLabors.ImageSharp.ColorSpaces;
-using SixLabors.ImageSharp.PixelFormats;
-using System.Runtime.InteropServices;
+using Gma.System.MouseKeyHook;
 using System.Text;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
-//using Serilog;
 
 namespace UI_Demo
 {
     public partial class Main_UI_Form : Form
     {
-
         private string g_Public_Key_Path = @"i:\RProteus\Cedula\Cedula_Access\Edv__Id_Tag_Access\Wrapper\wrapper\secure\public.pem";
-
-        //[DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        //public static extern void Register_Log_callback(Log_Callback cb);
-
-
-        //[UnmanagedFunctionPointer(CallingConvention.Cdecl)] 
-        //public delegate void Log_Callback(
-        //    IntPtr infoBuffer,
-        //    int infoBufferLen
-        //);
-
-        //private static Log_Callback? _Log_Callback_Ref;
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////
-        ///////////////////////////////////////////////////////////////////////////////////////////////
 
         private EdvLibAPi? glb_EdvLibAPi = null;
 
         private const string cTIPO_CEDULA = "Tipo de cédula : ";
         private const string cTIPO_CEDULA_UNK = "Desconocida";
 
+        private const string cLBL_DOC_NUM = "Nro  documento  : ";
+        private const string cLBL_FECH_NAC = "Fec. nacimiento : ";
+        private const string cLBL_FECH_EXP = "Fec. expiración : ";
+
+
+        private QrKeyboardInterceptor _qr;
 
         public Main_UI_Form()
         {
             InitializeComponent();
+
+            _qr = new QrKeyboardInterceptor();
+            _qr.OnQrRead += QrReceived;
+
+            Application.AddMessageFilter(_qr);
         }
 
-        private void Log_Fnc(IntPtr buffer, int bufferLen)
+        private void QrReceived(string data)
         {
-            // Copiar TX desde puntero nativo → array .NET
-            byte[] managedTx = new byte[bufferLen];
-            Marshal.Copy(buffer, managedTx, 0, bufferLen);
+            // ⚠️ Esto ya viene limpio, sin interferir UI
+            //MessageBox.Show("QR: " + data);
 
-            string s = Encoding.UTF8.GetString(managedTx);
-
-            richTB_Log.AppendText(s + "\n");
-
-            //Log.Information(s);
-
+            // o lo que necesites:
+            ProcessQR(data);
         }
 
+        private void ProcessQR(string qrData)
+        {
+            // lógica de procesamiento del QR
 
+            int pos = qrData.IndexOf("MRZ");
+            bool status = false;
+
+            if (pos > 0)
+            {
+                //
+                // Procesar Qr
+                //
+                if (glb_EdvLibAPi is not null)
+                {
+                    if (glb_EdvLibAPi.Tag__Insert_QR(qrData.Replace("MRZ", "&mrz=")) == true)
+                    {
+                        lblQR_NroDoc.Text = cLBL_DOC_NUM + glb_EdvLibAPi.Tag__Get_Numero_Documento();
+                        lblQR_FechNac.Text = cLBL_FECH_NAC + glb_EdvLibAPi.Tag__Get_Fecha_Nacimiento();
+                        lblQR_FechExp.Text = cLBL_FECH_EXP + glb_EdvLibAPi.Tag__Get_Fecha_Expiracion();
+                        status = true;
+                    }
+                }
+            }
+
+
+            if (status == false)
+            {
+                MessageBox.Show("ERROR : No fue posible procesar QR", "Error",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+            }
+        }
 
         private void Main_UI_Form_Load(object sender, EventArgs e)
         {
             LogViewer.Attach(richTB_Log);
-
-            //_Log_Callback_Ref = Log_Fnc;
-            //Register_Log_callback(_Log_Callback_Ref);
-
 
             lblTipo_Cedula.Text = cTIPO_CEDULA;
             lblTipo_Cedula_Val.Text = cTIPO_CEDULA_UNK;
@@ -73,7 +87,12 @@ namespace UI_Demo
             {
                 lblTipo_Cedula_Val.Text = x;
             }, g_Public_Key_Path);
+
+            lblQR_NroDoc.Text = cLBL_DOC_NUM;
+            lblQR_FechNac.Text = cLBL_FECH_NAC;
+            lblQR_FechExp.Text = cLBL_FECH_EXP;
         }
+
 
         private void button1_Click(object sender, EventArgs e)
         {
@@ -145,13 +164,17 @@ namespace UI_Demo
 
         private void btnCnnnect_AppIcao_0_Click(object sender, EventArgs e)
         {
-           
             glb_EdvLibAPi?.Prueba_Connect_appIcao(0);
         }
 
         private void btnCnnnect_AppIcao_1_Click(object sender, EventArgs e)
         {
             glb_EdvLibAPi?.Prueba_Connect_appIcao(1);
+        }
+
+        private void btnTag_Get_Dg_Click(object sender, EventArgs e)
+        {
+            glb_EdvLibAPi?.Tag__Get_Dg_Data(4000);
         }
     }
 }

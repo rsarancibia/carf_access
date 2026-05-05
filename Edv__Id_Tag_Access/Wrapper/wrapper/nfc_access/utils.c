@@ -8,21 +8,25 @@
 #include <time.h>
 
 static Log_Callback g_Log = NULL;
+static int          g_Log_Print_Ctrl_Info = 0;
 
 //
 // insert callback
 //
 __declspec(dllexport)
-void Register_Log_callback(Log_Callback cb)
+void Register_Log_callback(Log_Callback cb, int printLogCtrlInfo)
 {
 	g_Log = cb;
+
+    g_Log_Print_Ctrl_Info = printLogCtrlInfo;
 }
 
 void PutInLog(void *logger, int iLevel, char *sMsg, ...)
 {
-    char Buffer[1024 * 2];
-    char LogTag[16];
-	 
+    char    Buffer[1024 * 2];
+    char    LogTag[16];
+    int     offset = 0;
+
     switch(iLevel)
     {
         case LOG_LEVEL_EMERGENCY:
@@ -55,14 +59,19 @@ void PutInLog(void *logger, int iLevel, char *sMsg, ...)
     }
 
 			
+    Buffer[0] = 0;
+    
     time_t now = time(NULL);
   
     struct tm t;
     localtime_s(&t, &now);
 
-    int offset = snprintf(  Buffer, sizeof(Buffer),
+    if (g_Log_Print_Ctrl_Info != 0)
+    {
+        offset = snprintf(Buffer, sizeof(Buffer),
                             "[%02d:%02d:%02d (WRP) %s] ",
                             t.tm_hour, t.tm_min, t.tm_sec, LogTag);
+    }
 
     va_list ap;
     va_start(ap, sMsg);
@@ -81,7 +90,7 @@ void PutInLog(void *logger, int iLevel, char *sMsg, ...)
     if (g_Log != NULL)
     {
 #if 1
-        g_Log((unsigned char*)Buffer, (int)strlen(Buffer));
+        g_Log((unsigned char*)Buffer, (int)strlen(Buffer), iLevel);
 #else
         size_t len = strlen(Buffer);
 

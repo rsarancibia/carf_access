@@ -4,12 +4,12 @@ using Edv__Id_Tag_Access.Devices.NFC;
 using Edv__Id_Tag_Access.ImgEngines;
 using Edv__Id_Tag_Access.myLog;
 using Edv__Id_Tag_Access.Pace;
+using Microsoft.VisualBasic;
 using Serilog;
-using System.Net.NetworkInformation;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Text;
-using static System.Formats.Asn1.AsnWriter;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Edv__Id_Tag_Access
 {
@@ -30,7 +30,7 @@ namespace Edv__Id_Tag_Access
 
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void Register_Log_callback(Log_Callback cb);
+        public static extern void Register_Log_callback(Log_Callback cb, int printLogCtrlInfo);
 
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -39,23 +39,29 @@ namespace Edv__Id_Tag_Access
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void Log_Callback(
             IntPtr infoBuffer,
-            int infoBufferLen
+            int infoBufferLen,
+            int logLevel
         );
-
-        // Documentaciòn dice "Ocupar referencias, no llamadas directas"
-        // porque el GC podría recolectar el delegado y dejar un puntero colgando en el lado nativo, lo que causaría un crash al intentar llamar al callback.
-        private static Log_Callback _Log_Callback_Ref = Log_Fnc;
 
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int Edv_Init();
 
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Get_DgData(int timeout_ms);
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Edv_Moc(byte[] docNum, byte[] DoB, byte[] DoE);
+        public static extern int Edv__Set_Tag_Info(byte[] docNum, int docnum_len, byte[] DoB, int dob_len, byte[] DoE, int doe_len);
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Moc();
 
 
-        private const string cREADER_NAME = "HID Global OMNIKEY 5022 Smart Card Reader 0"; 
+        private const string cREADER_NAME = "HID Global OMNIKEY 5022 Smart Card Reader 0";
+
+        // Documentaciòn dice "Ocupar referencias, no llamadas directas"
+        // porque el GC podría recolectar el delegado y dejar un puntero colgando en el lado nativo, lo que causaría un crash al intentar llamar al callback.
+        private static Log_Callback _Log_Callback_Ref = Log_Fnc;
 
 
         private NFC_Reader?         glb_Nfc_Reader = null;
@@ -122,20 +128,12 @@ namespace Edv__Id_Tag_Access
         public int Init(api_Tag_Type tag_type, string public_key_path)
         {
             int status = 0;
-            int res = 0;
-
-            string test = "178BFBFF00A70F80|0C115F12";
-            byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(test));
-            string b64 = Convert.ToBase64String(hash);
-
-
-
 
             while (true)
             {
                 LoggerConfig.Init();
 
-                Register_Log_callback(_Log_Callback_Ref);
+                Register_Log_callback(_Log_Callback_Ref, 0);
 
                 Log.Information("DLL Init - Start");
 
@@ -143,44 +141,10 @@ namespace Edv__Id_Tag_Access
 
                 Edv_License__Add_License(Encoding.UTF8.GetBytes(path_license + "\0"), Encoding.UTF8.GetBytes(public_key_path + "\0"));
 
-                //byte[] lic  = new byte[1024 * 5];
-                //int lic_len = lic.Length;
-
-                ////Edv_Licencia_Get_Client_Info(lic, ref lic_len);
-                ////Edv_Licencia_Get_Client_Info(lic, ref lic_len);
-
-
-                //if (Edv_Licencia_Get_Client_Info(lic, ref lic_len) == 0)
-                //{
-
-                //    string texto = Encoding.UTF8.GetString(lic, 0, lic_len);
-
-
-                //    Log.Logger.HexDump(lic, data_lenght: lic_len, message: "Licencia Info Raw Data");
-
-                //    Log.Information("Calculado : " + b64);
-
-                //}
-                //else
-                //{
-                //    Log.Error("ERROR AL OBTENER DATOS DE CLIENTE");
-                //}
-
-                ////Edv_Test_Licencia();
-                //return 0;
-
-
-
-                //Test();
-
-                string qr_rafa = "https://portal.sidiv.registrocivil.cl/docstatus?RUN=12845657-0&type=CEDULA&serial=B5F089055&mrz=B5F089055075040793504071&name=RAFAEL%20SEBASTI%C1N%20%20ARANCIBIA%20AMPUERO";
-                Cedula_Info.Set_Info__Qr(qr_rafa);
-
-
-                res = status = Edv_Init();
-                if (res != 0)
+                status = Edv_Init();
+                if (status != 0)
                 {
-                    Log.Error("Edv_Init() = " + res.ToString());
+                    Log.Error("Edv_Init() = " + status.ToString());
 
                     status = 10;
                     break;
@@ -229,6 +193,53 @@ namespace Edv__Id_Tag_Access
             return status;
         }
 
+        public bool Tag__Insert_QR(string qr_link)
+        {
+            bool status = false;
+            try
+            {
+                status = Cedula_Info.Set_Info__Qr(qr_link);
+                if (status)
+                {
+                    Edv__Set_Tag_Info(Cedula_Info.baNumeroDocumento,
+                                    Cedula_Info.baNumeroDocumento.Length,
+                                    Cedula_Info.baFechaNacimiento,
+                                    Cedula_Info.baFechaNacimiento.Length,
+                                    Cedula_Info.baFechaExpiracion,
+                                    Cedula_Info.baFechaExpiracion.Length);
+                }
+
+
+
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Error en Insert_Tag_QR: " + ex.Message);
+            }
+            
+            return status;
+        }
+
+        public string Tag__Get_Numero_Documento()
+        {
+            return Cedula_Info.strNumeroDocumento;
+        }
+
+        public string Tag__Get_Fecha_Nacimiento()
+        {
+            return Cedula_Info.strFechaNacimiento_HumanFormat;
+        }
+
+        public string Tag__Get_Fecha_Expiracion()
+        {
+            return Cedula_Info.strFechaExpiracion_HumanFormat;
+        }
+
+        public int Tag__Get_Dg_Data(int timeout_ms)
+        {
+            return Edv_Get_DgData(timeout_ms);
+        }
+
         public void Test_Lector()
         { 
             if (glb_Cedula_IO is not null)
@@ -239,7 +250,7 @@ namespace Edv__Id_Tag_Access
 
                     //glb_Nfc_Reader?.Detect_Card(ref tag_on_field);
 
-                    Edv_Moc(Cedula_Info.baNumeroDocumento, Cedula_Info.baFechaNacimiento, Cedula_Info.baFechaExpiracion);
+                    Edv_Moc();
                 }
                 catch (Exception ex)
                 {
@@ -396,18 +407,19 @@ namespace Edv__Id_Tag_Access
             Log.Information("DLL End - Done");
         }
 
-        private void Log_Fnc_old(IntPtr buffer, int bufferLen)
+        enum LogLevelDll
         {
-            // Copiar TX desde puntero nativo → array .NET
-            byte[] managedTx = new byte[bufferLen];
-            Marshal.Copy(buffer, managedTx, 0, bufferLen);
+            LOG_LEVEL_EMERGENCY = 0,
+            LOG_LEVEL_ALERT = 1,
+            LOG_LEVEL_CRITICAL = 2,
+            LOG_LEVEL_ERROR = 3,
+            LOG_LEVEL_WARNING = 4,
+            LOG_LEVEL_NOTICE = 5,
+            LOG_LEVEL_INFORMATIONAL = 6,
+            LOG_LEVEL_DEBUG = 7
+        };
 
-            string s = Encoding.UTF8.GetString(managedTx);
-            
-            Log.Information(s);
-        }
-
-        private static void Log_Fnc(IntPtr buffer, int len)
+        private static void Log_Fnc(IntPtr buffer, int len, int logLevel)
         {
             try
             {
@@ -416,9 +428,30 @@ namespace Edv__Id_Tag_Access
 
                 string msg = Encoding.ASCII.GetString(data);
 
-                Console.WriteLine(msg);
+                switch (logLevel)
+                {
+                    case (int)LogLevelDll.LOG_LEVEL_EMERGENCY:
+                    case (int)LogLevelDll.LOG_LEVEL_ALERT:
+                    case (int)LogLevelDll.LOG_LEVEL_CRITICAL:
+                        Log.Fatal(msg);
+                        break;
 
-                Log.Information(msg);
+                    case (int)LogLevelDll.LOG_LEVEL_ERROR:
+                        Log.Error(msg);
+                        break;
+                    case (int)LogLevelDll.LOG_LEVEL_WARNING:
+                        Log.Warning(msg);
+                        break;
+
+                    case (int)LogLevelDll.LOG_LEVEL_NOTICE:
+                    case (int)LogLevelDll.LOG_LEVEL_INFORMATIONAL:
+                        Log.Information(msg);
+                        break;
+
+                    default:
+                        Log.Debug(msg);
+                        break;
+                }
             }
             catch (Exception ex)
             {
@@ -426,257 +459,5 @@ namespace Edv__Id_Tag_Access
                 Console.WriteLine("ERROR en callback: " + ex.Message);
             }
         }
-
-
-        /// <summary>
-        /// ///////////////////////////////////////////////////////////////////////////////////////
-        /// </summary>
-        private void Test()
-        {
-
-            // Chiqui !
-            bool boStatus;
-            string qr_rafa = "https://portal.sidiv.registrocivil.cl/docstatus?RUN=12845657-0&type=CEDULA&serial=B5F089055&mrz=B5F089055075040793504071&name=RAFAEL%20SEBASTI%C1N%20%20ARANCIBIA%20AMPUERO";
-
-            //public static string Get_Info_From_Qr(string qr_link)
-
-            boStatus =  Cedula_Info.Set_Info__Qr(qr_rafa);
-
-
-
-            boStatus = Cedula_Info.Set_Info__Serial("999999001982030142603014");
-
-            int statusPace = Pace_Do.OpenPACE_Init();
-
-
-            //byte[] data = System.Text.Encoding.UTF8.GetBytes("hola");
-            //byte[] hash = new byte[32];
-
-            //int res = Pace_Do.OpenPACE_SHA256(data, data.Length, hash);
-
-            //Console.WriteLine(BitConverter.ToString(hash));
-
-
-            //IntPtr ctx = Pace_Do.EAC_Create();
-
-            //if (ctx == IntPtr.Zero)
-            //{
-            //    Console.WriteLine("Error creando contexto");
-            //}
-            //else
-            //{
-            //    Console.WriteLine("Contexto OK");
-            //}
-
-            //Pace_Do.EAC_Free(ctx);
-
-
-            int size = 91; // el tamaño que necesites
-            byte[] sMrz = new byte[size];
-
-            // llenar con '<'
-            sMrz.AsSpan().Fill((byte)'<');
-
-            // último byte en 0
-            sMrz[size - 1] = 0;
-
-            Array.Copy(Cedula_Info.baNumeroDocumento, 0, sMrz, 5, Cedula_Info.baNumeroDocumento.Length);
-
-            Array.Copy(Cedula_Info.baFechaNacimiento, 0, sMrz, 30, Cedula_Info.baFechaNacimiento.Length);
-
-            Array.Copy(Cedula_Info.baFechaExpiracion, 0, sMrz, 38, Cedula_Info.baFechaExpiracion.Length);
-
-            IntPtr sec = Pace_Do.PACE_CreateSecret(sMrz, sMrz.Length);
-
-            if (sec == IntPtr.Zero)
-            {
-                Console.WriteLine("Error creando secreto");
-            }
-            else
-            {
-                Console.WriteLine("Secreto OK");
-            }
-
-            Pace_Do.PACE_FreeSecret(sec);
-
-            ///////////////////////////////////////////////////////////////////////
-
-            //statusPace = Pace_Do.OpenPACE_Init();
-
-            // 1. Crear contexto
-            IntPtr ctx = Pace_Do.EAC_Create();
-
-            // 2. Inicializar con CardAccess
-            //byte[] cardAccess = new byte[]
-            //{
-            //    0x31,0x1F,
-            //    0x30,0x1D,
-            //    0x06,0x0A,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x04,0x02,
-            //    0x30,0x0F,
-            //    0x02,0x01,0x02,
-            //    0x02,0x01,0x01,
-            //    0x02,0x01,0x01,
-            //    0x02,0x01,0x01
-            //};
-
-
-            //            byte[] cardAccess = new byte[]
-            //{
-            //    0x30,0x1C,
-            //    0x06,0x0A,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x04,0x02,
-            //    0x30,0x0E,
-            //    0x02,0x01,0x02,
-            //    0x02,0x01,0x01,
-            //    0x02,0x01,0x01,
-            //    0x02,0x01,0x01
-            //};
-
-
-            //        byte[] cardAccess = new byte[]
-            //        {
-            //0x30,0x12,
-            //0x06,0x0A,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x04,0x02,
-            //0x04,0x02,
-            //0x01,0x02,
-            //0x02,0x01,0x0F
-            //        };
-
-
-    //        byte[] cardAccess = new byte[]
-    //        {
-    //0x30,0x81,0x80,  // ← PATCH (antes era 0x31)
-
-    //0x30,0x12,
-    //0x06,0x0A,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x04,0x02,
-    //0x04,0x02,
-    //0x01,0x02,
-    //0x02,0x01,0x0F,
-
-    //0x30,0x15,
-    //0x06,0x09,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x0C,0x01,
-    //0x30,0x03,0x02,0x01,0x01,
-    //0x30,0x03,0x03,0x01,0x00,
-
-    //0x30,0x15,
-    //0x06,0x09,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x0C,0x02,
-    //0x30,0x03,0x02,0x01,0x02,
-    //0x30,0x03,0x03,0x01,0x00,
-
-    //0x30,0x1D,
-    //0x06,0x09,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x0C,0x03,
-    //0x30,0x03,0x02,0x01,0x03,
-    //0x30,0x0B,
-    //0x03,0x03,0x04,0x30,0x10,
-    //0x85,0x01,0x0C,
-    //0x87,0x01,0xFF,
-
-    //0x30,0x1D,
-    //0x06,0x09,0x04,0x00,0x7F,0x00,0x07,0x02,0x02,0x0C,0x03,
-    //0x30,0x03,0x02,0x01,0x05,
-    //0x30,0x0B,
-    //0x03,0x03,0x04,0x30,0x10,
-    //0x85,0x01,0x0C,
-    //0x87,0x01,0xFF
-    //        };
-
-            byte[] respuestaReadBin = new byte[]
-                {
-            0x31, 0x81, 0x80, 0x30, 0x12, 0x06, 0x0A, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02, 0x04, 0x02,
-0x04, 0x02, 0x01, 0x02, 0x02, 0x01, 0x0F, 0x30, 0x15, 0x06, 0x09, 0x04, 0x00, 0x7F, 0x00, 0x07,
-0x02, 0x02, 0x0C, 0x01, 0x30, 0x03, 0x02, 0x01, 0x01, 0x30, 0x03, 0x03, 0x01, 0x00, 0x30, 0x15,
-0x06, 0x09, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02, 0x0C, 0x02, 0x30, 0x03, 0x02, 0x01, 0x02,
-0x30, 0x03, 0x03, 0x01, 0x00, 0x30, 0x1D, 0x06, 0x09, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02,
-0x0C, 0x03, 0x30, 0x03, 0x02, 0x01, 0x03, 0x30, 0x0B, 0x03, 0x03, 0x04, 0x30, 0x10, 0x85, 0x01,
-0x0C, 0x87, 0x01, 0xFF, 0x30, 0x1D, 0x06, 0x09, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02, 0x0C,
-0x03, 0x30, 0x03, 0x02, 0x01, 0x05, 0x30, 0x0B, 0x03, 0x03, 0x04, 0x30, 0x10, 0x85, 0x01, 0x0C,
-0x87, 0x01, 0xFF };
-
-
-            byte[] cardAccess = new byte[256];
-            Array.Copy(respuestaReadBin, 0, cardAccess, 0, respuestaReadBin.Length);
-
-
-
-            //int res = OpenPACE.EAC_InitCardAccess(
-            //    ctx,
-            //    cardAccess,
-            //    (UIntPtr)cardAccess.Length);
-
-            //Console.WriteLine("InitCardAccess: " + res);
-
-
-
-
-            int init = Pace_Do.EAC_InitCardAccess(ctx, cardAccess, (UIntPtr)(cardAccess.Length));
-
-
-            Console.WriteLine("InitCardAccess: " + init);
-
-            // 3. Crear secreto (ejemplo)
-            //byte[] mrz = System.Text.Encoding.ASCII.GetBytes("123456789");
-
-            sec = Pace_Do.PACE_CreateSecret(sMrz, sMrz.Length);
-
-            // 4. Step1
-            byte[] buffer = new byte[256];
-            int len = buffer.Length;
-
-            //int res = Pace_Do.PACE_Step1(ctx, sec, buffer, ref len);
-
-            //Console.WriteLine("Step1 result: " + res);
-            //Console.WriteLine("Length: " + len);
-
-
-
-
-            //ctx = Pace_Do.EAC_Create();
-            //sec = Pace_Do.PACE_CreateSecret(sMrz, sMrz.Length);
-            //byte[] buffer = new byte[256];
-            //int len = buffer.Length;
-
-            //int res2 = Pace_Do.PACE_Step1(ctx, sec, buffer, ref len);
-
-            //if (res2 == 1)
-            //{
-            //    Console.WriteLine("Step1 OK, length: " + len);
-            //}
-            //else
-            //{
-            //    Console.WriteLine("Error en Step1");
-            //}
-            //Pace_Do.EAC_Free(ctx);
-            //Pace_Do.PACE_FreeSecret(sec);
-
-
-
-
-            //Pace_Do.Compute_K_Keys(Cedula_Info.baSerial);
-
-
-            //Cedula_Info.Set_Info("B5F089055075040793504071");
-            //Log.Information("Cedula Info: " + Cedula_Info.strNumeroDocumento + ", " + Cedula_Info.strFechaNacimiento + ", " + Cedula_Info.strFechaExpiracion);
-
-
-            //T22000129364081251010318
-            //bool result = Cedula_Info.Set_Info("T22000129364081251010318");
-
-            //byte[] rama = SecUtils.ComputeSHA1("T22000129364081251010318");
-            //Log.Logger.HexDump(rama, data_lenght: rama.Length, message: "SHA1 of T22000129364081251010318");
-
-            //byte[] rama2 = SecUtils.ComputeSHA1(Cedula_Info.baSerial);
-            //Log.Logger.HexDump(rama2, data_lenght: rama2.Length, message: "SHA1 of Cedula_Info.baSerial");
-
-            ///////////////////////////////////////////////////////////////////////////////////////////////
-
-
-            //byte[] data = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-            //                0x10, 0x11,0x12,0x13,0x14};//,0x15,0x16,0x17};
-
-            //Log.Logger.HexDump(data, data_lenght: data.Length, message: "Hex Dump of Data");
-
-            //HexDumpInternal(data, data.Length);
-
-        }
-
     }
 }

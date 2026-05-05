@@ -25,7 +25,8 @@ enum
 
 typedef void (*Log_Callback)(
     const unsigned char* infoBuffer,
-    int infoBufferLen
+    int infoBufferLen,
+	int logLevel
     );
 
 typedef void* stLoggerPtr;

@@ -1128,6 +1128,20 @@ int					iRespDataPlainLen;
 
 	memset(aIv, 0, sizeof(aIv));
 
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 20");
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, (char*)"RANA2 -> opSICAO->sICAOKey : ");
+	DisplayHex(LOG_LEVEL_INFORMATIONAL, opSICAO->sICAOKey, sizeof(opSICAO->sICAOKey));
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 	//	Kseed
 	iKseedLen = sizeof(aKseed);
 	memset(aTmpBuff, 0, iTmpBuffLen);
@@ -1218,6 +1232,9 @@ int					iRespDataPlainLen;
 		goto JMP_authenticate;
 	}
 
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 21");
+
+
 	// cmd EXTERNAL AUTHENTICATE 0x00, 0x82, 0x00, 0x00
 	aApduHeader[0] = 0x00;
 	aApduHeader[1] = 0x82;
@@ -1250,6 +1267,9 @@ int					iRespDataPlainLen;
 		goto JMP_authenticate;
 	}
 
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 22");
+
+
 	memset(aRespDataEnc, 0, sizeof(aRespDataEnc));
 	memcpy_s(aRespDataEnc, sizeof(aRespDataEnc), aApduResponse, 32);
 	
@@ -1271,6 +1291,9 @@ int					iRespDataPlainLen;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Mac Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
+
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 23");
+
 
 	// Decrypt response
 	iRespDataEncLen = 32;
@@ -1300,6 +1323,9 @@ int					iRespDataPlainLen;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Local Challenge Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
+
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 24");
+
 
 	//	Session count SSC
 	memcpy_s(opSICAO->aSessCount,sizeof(opSICAO->aSessCount), aSCardChallenge + 4, 4);
@@ -1348,6 +1374,9 @@ int					iRespDataPlainLen;
 
 	// At this point it have all keys needed to establish
 	// a secure communication with the smart card.
+
+PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 25");
+
 
 	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - authenticate - OUT");
 JMP_authenticate:
@@ -1946,7 +1975,7 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 	iIsOld = 0;
 
-	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - IN");
+	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - IN -> AppIcao: %d", appICAO);
 
 	
 
@@ -2158,6 +2187,8 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 1");
+
 	// SELECT DIR
 	memset(aApduHeader, 0, sizeof(aApduHeader));
 	memset(aApduData, 0, sizeof(aApduData));
@@ -2184,6 +2215,10 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	}
 	else
 	{
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 2");
+
+
+
 		// READBINARY on DIR
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2211,6 +2246,9 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 3");
+
+
 	// SELECT CARDACCESS
 	memset(aApduHeader, 0, sizeof(aApduHeader));
 	memset(aApduData, 0, sizeof(aApduData));
@@ -2235,6 +2273,11 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	}
 	else
 	{
+		
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 4");
+
+		
+		
 		// READBINARY on DIR
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2258,6 +2301,11 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 		else
 		{
+
+			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 5");
+
+
+
 			// Decode CardAccessData
 #ifdef _DEBUG
 			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - OK Read Binary on Dir CA [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
@@ -2270,8 +2318,16 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
+
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 6");
+
+
 	if (iIsOld == 0)
 	{
+		
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 7");
+
+		
 		// PACE
 		
 		//	Update ICAO key
@@ -2388,10 +2444,9 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 
 
+		//
 		// Get Doc MRZ from QR
-		//////////////////////////////////////////////////////////////////
-		// RAFA RAFA RAFA RAFA
-		//const char sMrz[91]; ??????????
+		//
 		char sMrz[91];
 		memset((void *)sMrz, 0, sizeof(sMrz));
 		memset((void *)sMrz, '<', sizeof(sMrz) - 1);
@@ -2783,8 +2838,16 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
+	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 8");
+
+
+
 	if (appICAO && iIsOld)
 	{
+		
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 10");
+
+		
 		//	Update ICAO key
 		///////////////////////////////////////////////////////////////////////
 		// RAFA RAFA RAFA 
@@ -2827,11 +2890,18 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 			goto JMP_connectcard;
 		}
 
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 11");
+
+
 		if (iApduResponseLen > 0)
 		{
 			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARNING Select App Resp [%ld]", iApduResponseLen);
 		}
 
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 12");
+
+		
+		
 		// cmd GET CHALLENGE 0x00, 0x84, 0x00, 0x00
 		aApduHeader[0] = 0x00;
 		aApduHeader[1] = 0x84;
@@ -2861,6 +2931,8 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
+		
+		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 13");
 
 		// Authenticate With ICAO SmartCard
 		pSBIO->lReturn = authenticate(opSICAO, pDev, aApduResponse, iApduResponseLen);
@@ -4357,7 +4429,7 @@ stLoggerPtr			pLogger = NULL;
 	return pSBIO->lError;
 }
 
-int ICAOCapture(sHndICAOPtr opSICAO, int iDeviceID, int iTimeout)
+int ICAOCapture(sHndICAOPtr opSICAO, int iDeviceID, int iTimeout_ms)
 {
 stHndBioPtr		pSBIO = NULL;
 stLoggerPtr			pLogger = NULL;
@@ -4377,13 +4449,13 @@ long			lTmpError;
 	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 	
 	//	Get and Check Device Handler
-	pTmpDev = pSBIO->vpDeviceHandler[iDeviceID];
-	if (pTmpDev == NULL)
-	{
-		pSBIO->lError = ICAO_ERROR_CAPTURE_DEVICEHANDLE_NULL;
-		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
-		goto JMP_ICAOCapture;
-	}
+	//pTmpDev = pSBIO->vpDeviceHandler[iDeviceID];
+	//if (pTmpDev == NULL)
+	//{
+	//	pSBIO->lError = ICAO_ERROR_CAPTURE_DEVICEHANDLE_NULL;
+	//	PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - Capture - ERROR SmartCard Reader Uninitialized [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
+	//	goto JMP_ICAOCapture;
+	//}
 	
 	if (iDeviceID == BIO_DEVICE_BIOPIN)
 	{
@@ -4411,7 +4483,7 @@ long			lTmpError;
 	}
 
 
-	mutex_lock(opSICAO->oMutex);
+	//mutex_lock(opSICAO->oMutex);
 
 	lInitialTime = GetTickCount();
 	do
@@ -4419,7 +4491,7 @@ long			lTmpError;
 		// Check presence and get SmartCard
 		pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
 		lActualTime = GetTickCount();
-	} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout);
+	} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout_ms);
 	if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
 	{
 		pSBIO->lError = ICAO_ERROR_NO_CARD_AVAILABLE;
@@ -4468,7 +4540,7 @@ JMP_ICAOCapture:
 		pSBIO->lError = lTmpError;
 	}
 
-	mutex_unlock(opSICAO->oMutex);
+	//mutex_unlock(opSICAO->oMutex);
 
 	return pSBIO->lError;
 }
@@ -4612,7 +4684,21 @@ int				iTimeout = 5000;
 		goto JMP_matchOnCard;
 	}
 
-	while(iPinNotFoundBugRetryCount < 3)
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, (char *)"RANA1 -> opSICAO->sICAOKey : ");
+	DisplayHex(LOG_LEVEL_INFORMATIONAL, opSICAO->sICAOKey, sizeof(opSICAO->sICAOKey));
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+	while(iPinNotFoundBugRetryCount < 1)
 	{
 		pSBIO->lError = ICAO_ERROR_NO_ERROR;
 		iPinNotFoundBugRetryCount++;

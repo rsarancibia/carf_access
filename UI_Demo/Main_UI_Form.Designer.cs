@@ -31,6 +31,11 @@
             tableLayoutPanel1 = new TableLayoutPanel();
             richTB_Log = new RichTextBox();
             panel1 = new Panel();
+            lblQR_FechNac = new Label();
+            lblQR_FechExp = new Label();
+            lblQR_NroDoc = new Label();
+            btnCnnnect_AppIcao_1 = new Button();
+            btnCnnnect_AppIcao_0 = new Button();
             GetLicence = new Button();
             button1 = new Button();
             btnClearLog = new Button();
@@ -39,8 +44,7 @@
             btnDoMoc = new Button();
             pbDisplay = new PictureBox();
             btnCapture_Img = new Button();
-            btnCnnnect_AppIcao_0 = new Button();
-            btnCnnnect_AppIcao_1 = new Button();
+            btnTag_Get_Dg = new Button();
             tableLayoutPanel1.SuspendLayout();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbDisplay).BeginInit();
@@ -72,6 +76,10 @@
             // 
             // panel1
             // 
+            panel1.Controls.Add(btnTag_Get_Dg);
+            panel1.Controls.Add(lblQR_FechNac);
+            panel1.Controls.Add(lblQR_FechExp);
+            panel1.Controls.Add(lblQR_NroDoc);
             panel1.Controls.Add(btnCnnnect_AppIcao_1);
             panel1.Controls.Add(btnCnnnect_AppIcao_0);
             panel1.Controls.Add(GetLicence);
@@ -87,6 +95,53 @@
             panel1.Name = "panel1";
             panel1.Size = new Size(1082, 387);
             panel1.TabIndex = 1;
+            // 
+            // lblQR_FechNac
+            // 
+            lblQR_FechNac.AutoSize = true;
+            lblQR_FechNac.Location = new Point(287, 62);
+            lblQR_FechNac.Name = "lblQR_FechNac";
+            lblQR_FechNac.Size = new Size(38, 15);
+            lblQR_FechNac.TabIndex = 12;
+            lblQR_FechNac.Text = "label1";
+            // 
+            // lblQR_FechExp
+            // 
+            lblQR_FechExp.AutoSize = true;
+            lblQR_FechExp.Location = new Point(287, 96);
+            lblQR_FechExp.Name = "lblQR_FechExp";
+            lblQR_FechExp.Size = new Size(38, 15);
+            lblQR_FechExp.TabIndex = 11;
+            lblQR_FechExp.Text = "label1";
+            // 
+            // lblQR_NroDoc
+            // 
+            lblQR_NroDoc.AutoSize = true;
+            lblQR_NroDoc.Location = new Point(287, 33);
+            lblQR_NroDoc.Name = "lblQR_NroDoc";
+            lblQR_NroDoc.Size = new Size(38, 15);
+            lblQR_NroDoc.TabIndex = 10;
+            lblQR_NroDoc.Text = "label1";
+            // 
+            // btnCnnnect_AppIcao_1
+            // 
+            btnCnnnect_AppIcao_1.Location = new Point(855, 169);
+            btnCnnnect_AppIcao_1.Name = "btnCnnnect_AppIcao_1";
+            btnCnnnect_AppIcao_1.Size = new Size(89, 42);
+            btnCnnnect_AppIcao_1.TabIndex = 9;
+            btnCnnnect_AppIcao_1.Text = "Conn App 1";
+            btnCnnnect_AppIcao_1.UseVisualStyleBackColor = true;
+            btnCnnnect_AppIcao_1.Click += btnCnnnect_AppIcao_1_Click;
+            // 
+            // btnCnnnect_AppIcao_0
+            // 
+            btnCnnnect_AppIcao_0.Location = new Point(849, 117);
+            btnCnnnect_AppIcao_0.Name = "btnCnnnect_AppIcao_0";
+            btnCnnnect_AppIcao_0.Size = new Size(95, 35);
+            btnCnnnect_AppIcao_0.TabIndex = 8;
+            btnCnnnect_AppIcao_0.Text = "Conn App 0";
+            btnCnnnect_AppIcao_0.UseVisualStyleBackColor = true;
+            btnCnnnect_AppIcao_0.Click += btnCnnnect_AppIcao_0_Click;
             // 
             // GetLicence
             // 
@@ -169,25 +224,15 @@
             btnCapture_Img.UseVisualStyleBackColor = true;
             btnCapture_Img.Click += button1_Click;
             // 
-            // btnCnnnect_AppIcao_0
+            // btnTag_Get_Dg
             // 
-            btnCnnnect_AppIcao_0.Location = new Point(849, 117);
-            btnCnnnect_AppIcao_0.Name = "btnCnnnect_AppIcao_0";
-            btnCnnnect_AppIcao_0.Size = new Size(95, 35);
-            btnCnnnect_AppIcao_0.TabIndex = 8;
-            btnCnnnect_AppIcao_0.Text = "Conn App 0";
-            btnCnnnect_AppIcao_0.UseVisualStyleBackColor = true;
-            btnCnnnect_AppIcao_0.Click += btnCnnnect_AppIcao_0_Click;
-            // 
-            // btnCnnnect_AppIcao_1
-            // 
-            btnCnnnect_AppIcao_1.Location = new Point(855, 169);
-            btnCnnnect_AppIcao_1.Name = "btnCnnnect_AppIcao_1";
-            btnCnnnect_AppIcao_1.Size = new Size(89, 42);
-            btnCnnnect_AppIcao_1.TabIndex = 9;
-            btnCnnnect_AppIcao_1.Text = "Conn App 1";
-            btnCnnnect_AppIcao_1.UseVisualStyleBackColor = true;
-            btnCnnnect_AppIcao_1.Click += btnCnnnect_AppIcao_1_Click;
+            btnTag_Get_Dg.Location = new Point(524, 277);
+            btnTag_Get_Dg.Name = "btnTag_Get_Dg";
+            btnTag_Get_Dg.Size = new Size(75, 23);
+            btnTag_Get_Dg.TabIndex = 13;
+            btnTag_Get_Dg.Text = "Get DG";
+            btnTag_Get_Dg.UseVisualStyleBackColor = true;
+            btnTag_Get_Dg.Click += btnTag_Get_Dg_Click;
             // 
             // Main_UI_Form
             // 
@@ -221,5 +266,9 @@
         private Button GetLicence;
         private Button btnCnnnect_AppIcao_1;
         private Button btnCnnnect_AppIcao_0;
+        private Label lblQR_NroDoc;
+        private Label lblQR_FechNac;
+        private Label lblQR_FechExp;
+        private Button btnTag_Get_Dg;
     }
 }

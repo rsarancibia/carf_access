@@ -69,26 +69,69 @@ void Register_Nfc_Tag_Diconnect_Callback(DISCONNECT cb)
     pHndICAO->fn_Disconnect = cb;
 }
 
+__declspec(dllexport)
+int Edv_Get_DgData(int timeout_ms)
+{
+    stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
+
+    pHndICAO->iGetFinger    = TRUE;
+    pHndICAO->iGetICAO      = TRUE;
+
+    return ICAOCapture(pHndICAO, 0, timeout_ms);
+}
 
 __declspec(dllexport)
-int Edv_Moc(unsigned char* docNum, unsigned char* DoB, unsigned char*  DoE) 
+int Edv__Set_Tag_Info(unsigned char* docNum, int docnum_len, unsigned char* DoB, int dob_len, unsigned char* DoE, int doe_len)
+{
+    stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
+    int     status = 0;
+    char    IcaoKey[sizeof(pHndICAO->sICAOKey)] = { 0 };
+
+
+    while (TRUE)
+    {
+        if (docNum == NULL || docnum_len <= 0)
+        {
+            status = 1000;
+            break;
+        }
+
+        if (DoB == NULL || dob_len <= 0)
+        {
+            status = 1001;
+            break;
+        }
+
+        if (DoE == NULL || doe_len <= 0)
+        {
+            status = 1002;
+            break;
+        }
+
+        if ((docnum_len + dob_len + doe_len) > sizeof(pHndICAO->sICAOKey))
+        {
+            status = 1003;
+            break;
+        }
+
+        memcpy((void*)IcaoKey, (void*)docNum, docnum_len);
+        memcpy((void*)(IcaoKey + docnum_len), (void*)DoB, dob_len);
+        memcpy((void*)(IcaoKey + docnum_len + dob_len), (void*)DoE, doe_len);
+
+        memcpy((void*)(pHndICAO->sICAOKey), (void*)IcaoKey, docnum_len + dob_len + doe_len);
+        break;
+    }
+
+    return status;
+}
+
+__declspec(dllexport)
+int Edv_Moc()
 {
     stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
     int match = 100;
-    int status;
 
-    //string qr_rafa = "https://portal.sidiv.registrocivil.cl/docstatus?RUN=12845657-0&type=CEDULA&serial=B5F089055&mrz=B5F089055075040793504071&name=RAFAEL%20SEBASTI%C1N%20%20ARANCIBIA%20AMPUERO";
-
-    char data_rafa[] = "B5F089055075040793504071";
-
-    memcpy((void *)(pHndICAO->sICAOKey), (void *)data_rafa, sizeof(data_rafa));
-
-    status = ICAOMOC(g_SBIO.HndICAO, 0, 1, 0, &match);
-
-    PutInLog(NULL, LOG_LEVEL_NOTICE, (char*)"MOC RESUUUUUUUUUUULTS : %d\r\n", match); 
-
-    return status;
-
+    return ICAOMOC(g_SBIO.HndICAO, 0, 1, 0, &match);
 }
 
 __declspec(dllexport)
