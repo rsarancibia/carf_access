@@ -9,14 +9,80 @@ static stHndBio     g_SBIO;
 static TRANSMIT     g_TxRxNfc = NULL;
 static GETCARD      g_Card_Get = NULL;
 static DISCONNECT   g_Carf_Disconnect = NULL;
+static int          g_Busy = 0;
+
+#define dBUSY_SET()     g_Busy = 1
+#define dBUSY_CLEAR()   g_Busy = 0
+#define dBUSY_CHECK()   if(g_Busy) { return 0xFFFF;}  dBUSY_SET();
 
 
 __declspec(dllexport)
 int Edv_Init()
 {
+    int status = 0;
+    
+    stHndICAO* pHndICAO;// = (stHndICAO*)g_SBIO.HndICAO;
+
     memset((void *)&g_SBIO, 0, sizeof(stHndBio));
 
-    return ICAOInit(&g_SBIO);
+    while(TRUE)
+    {
+        status = ICAOInit(&g_SBIO);
+        if (status != 0) break;
+
+		pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
+
+        status = ICAOAddCaptureField(pHndICAO, BIO_DATAFIELD_DOC_FACE);
+        if (status != 0) break;
+
+        status = ICAOAddCaptureField(pHndICAO, BIO_DATAFIELD_DOC_SIGNATURE);
+        if (status != 0) break;
+
+        status = ICAOAddCaptureField(pHndICAO, BIO_DATAFIELD_DOC_FINGERID_1);
+        if (status != 0) break;
+
+        status = ICAOAddCaptureField(pHndICAO, BIO_DATAFIELD_DOC_FINGERID_2);
+        if (status != 0) break;
+
+        status = ICAOAddCaptureField(pHndICAO, BIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT);
+        if (status != 0) break;
+
+        status = ICAOAddCaptureField(pHndICAO, BIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT);
+        if (status != 0) break;
+        break;
+	}
+
+    return status;
+}
+
+__declspec(dllexport)
+int Edv_Get_Face_Picture(unsigned char* output_buffer, int* total_out)
+{
+    int status = 0;
+
+    dBUSY_CHECK();
+
+    status = sBioGetData(&g_SBIO, 0, BIO_DATAFIELD_DOC_FACE, output_buffer, total_out);
+
+
+    dBUSY_CLEAR();
+
+	return status;
+
+}
+
+__declspec(dllexport)
+int Edv_Get_Signature_Picture(unsigned char* output_buffer, int* total_out)
+{
+    int status = 0;
+
+    dBUSY_CHECK();
+
+    status = sBioGetData(&g_SBIO, 0, BIO_DATAFIELD_DOC_SIGNATURE, output_buffer, total_out);
+
+    dBUSY_CLEAR();
+
+    return status;
 }
 
 
@@ -70,14 +136,31 @@ void Register_Nfc_Tag_Diconnect_Callback(DISCONNECT cb)
 }
 
 __declspec(dllexport)
-int Edv_Get_DgData(int timeout_ms)
+int Edv_Get_DgData(int timeout_ms, int *Finger1, int *Finger2)
 {
+    int status = 0;
+    
+    dBUSY_CHECK();
+    
     stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
 
-    pHndICAO->iGetFinger    = TRUE;
-    pHndICAO->iGetICAO      = TRUE;
+    status = ICAOCapture(pHndICAO, 0, timeout_ms);
 
-    return ICAOCapture(pHndICAO, 0, timeout_ms);
+    if (status == BIO_ERROR_NO_DATA_AVAILABLE)
+    {
+        *Finger1 = BIO_FINGER_NONE;
+        *Finger2 = BIO_FINGER_NONE;
+        status = 0;
+    }
+    else
+    {
+        *Finger1 = pHndICAO->iFinger1_Id;
+        *Finger2 = pHndICAO->iFinger2_Id;
+    }
+
+    dBUSY_CLEAR();
+
+    return status;
 }
 
 __declspec(dllexport)
@@ -128,8 +211,12 @@ int Edv__Set_Tag_Info(unsigned char* docNum, int docnum_len, unsigned char* DoB,
 __declspec(dllexport)
 int Edv_Moc()
 {
+    dBUSY_CHECK();
+    
     stHndICAO* pHndICAO = (stHndICAO*)g_SBIO.HndICAO;
     int match = 100;
+
+    dBUSY_CLEAR();
 
     return ICAOMOC(g_SBIO.HndICAO, 0, 1, 0, &match);
 }

@@ -86,7 +86,13 @@ typedef struct ststHndICAO{
 	int				iGetICAO;
 	int				iGetFinger;
 
-	char				sICAOKey[32];
+	int				iFinger1_Id;// = BIO_FINGER_NONE;
+	int				iFinger1_ReTriesLeft;// = -1;
+
+	int				iFinger2_Id;// = BIO_FINGER_NONE;
+	int				iFinger2_ReTriesLeft;// = -1;
+
+	char			sICAOKey[32];
 	unsigned char	aKeyEnc[16];
 	unsigned char	aKeyMac[16];
 	unsigned char	aSessCount[8];

@@ -12,7 +12,7 @@
 
 //#define _FOR_BECH		// Workaround for BECH. The don't expect BIO_ERROR_MOC_LOCKED in MOC, so it returns ok if card is bloqued.
 
-int		iIsOld = 0;
+int		g_Tagi_Is_Old = 0;
 EAC_CTX* pcd_ctx = NULL;
 
 static unsigned char parity(unsigned char in){
@@ -513,7 +513,7 @@ int					iTmpApduRspLen;
 	//iTmpApduRspLen = *ipApduRspLen;
 	//*ipApduRspLen = 0;
 	
-	if (!iIsOld)
+	if (!g_Tagi_Is_Old)
 	{
 		if (pcd_ctx == NULL)
 		{
@@ -524,7 +524,7 @@ int					iTmpApduRspLen;
 	}
 	
 	// Increment session counter
-	if(iIsOld)
+	if(g_Tagi_Is_Old)
 		increment8bitCounter(opSICAO->aSessCount);
 	else
 	{
@@ -549,7 +549,7 @@ int					iTmpApduRspLen;
 	// DO87 = 0x87|LC+1|0x01|tDES(DATA_PADD)
 	iDo87Len = 0;
 	if(ucLc != 0){
-		if (iIsOld)
+		if (g_Tagi_Is_Old)
 		{
 			memset(aDataPadd, 0, sizeof(aDataPadd));
 			memcpy_s(aDataPadd, sizeof(aDataPadd), ucpData, ucLc);
@@ -685,7 +685,7 @@ int					iTmpApduRspLen;
 	}
 
 	// DO8E = 0x8E|0x08|MAC(SSC|HEAD_PADD|DO87|DO97|PADDING)
-	if (iIsOld)
+	if (g_Tagi_Is_Old)
 	{
 		memset(aDo8EDataPadd, 0, sizeof(aDo8EDataPadd));
 		iDo8EDataPaddLen = 0;
@@ -842,7 +842,7 @@ int					iTmpApduRspLen;
 #endif
 
 	// Increment session counter
-	if (iIsOld)
+	if (g_Tagi_Is_Old)
 		increment8bitCounter(opSICAO->aSessCount);
 	else
 	{
@@ -911,7 +911,7 @@ int					iTmpApduRspLen;
 		goto JMP_transmitSecureApdu;
 	}
 
-	if (iIsOld)
+	if (g_Tagi_Is_Old)
 	{
 		// DO8E = 0x8E|0x08|MAC(SSC|DO87|DO99|PADDING)
 		//MAC(SSC|DO87|DO99|PADDING)
@@ -995,7 +995,7 @@ int					iTmpApduRspLen;
 		iDataPaddLen = sizeof(aDataPadd);
 		memset(aDataPadd, 0, iDataPaddLen);
 		
-		if (iIsOld)
+		if (g_Tagi_Is_Old)
 		{
 			pSBIO->lReturn = getCrypt(NID_des_ede_cbc, CODER_CRYPT_DECRYPT, opSICAO->aKeyEnc, sizeof(opSICAO->aKeyEnc), aIv, sizeof(aIv), aDo87 + iDo87Offset, iDo87Len - iDo87Offset, aDataPadd, &iDataPaddLen, 0);
 			if (pSBIO->lReturn != 0)
@@ -1128,20 +1128,6 @@ int					iRespDataPlainLen;
 
 	memset(aIv, 0, sizeof(aIv));
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 20");
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	PutInLog(NULL, LOG_LEVEL_INFORMATIONAL, (char*)"RANA2 -> opSICAO->sICAOKey : ");
-	DisplayHex(LOG_LEVEL_INFORMATIONAL, opSICAO->sICAOKey, sizeof(opSICAO->sICAOKey));
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
 	//	Kseed
 	iKseedLen = sizeof(aKseed);
 	memset(aTmpBuff, 0, iTmpBuffLen);
@@ -1232,8 +1218,6 @@ int					iRespDataPlainLen;
 		goto JMP_authenticate;
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 21");
-
 
 	// cmd EXTERNAL AUTHENTICATE 0x00, 0x82, 0x00, 0x00
 	aApduHeader[0] = 0x00;
@@ -1267,9 +1251,6 @@ int					iRespDataPlainLen;
 		goto JMP_authenticate;
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 22");
-
-
 	memset(aRespDataEnc, 0, sizeof(aRespDataEnc));
 	memcpy_s(aRespDataEnc, sizeof(aRespDataEnc), aApduResponse, 32);
 	
@@ -1291,9 +1272,6 @@ int					iRespDataPlainLen;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Mac Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
-
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 23");
-
 
 	// Decrypt response
 	iRespDataEncLen = 32;
@@ -1323,9 +1301,6 @@ int					iRespDataPlainLen;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char *)"ICAO - authenticate - ERROR Resp Local Challenge Verification [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 		goto JMP_authenticate;
 	}
-
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 24");
-
 
 	//	Session count SSC
 	memcpy_s(opSICAO->aSessCount,sizeof(opSICAO->aSessCount), aSCardChallenge + 4, 4);
@@ -1374,9 +1349,6 @@ int					iRespDataPlainLen;
 
 	// At this point it have all keys needed to establish
 	// a secure communication with the smart card.
-
-PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 25");
-
 
 	PutInLog(pLogger, LOG_LEVEL_NOTICE, "%s", (char *)"ICAO - authenticate - OUT");
 JMP_authenticate:
@@ -1737,6 +1709,7 @@ char					sTmp[256];
 			else
 			{
 				pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FACE, BIO_DATAFIELDPROP_IMAGEFORMAT_SOLJP2, opSICAO->aDoc_DG_2 + iDGxOffset, opSICAO->iDoc_DG_2Len - iDGxOffset);
+				
 				if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 				{
 					//pSBIO->lError = ICAO_ERROR_UPDATEICAORESULTS_PUTDATA_DOC_FACE;
@@ -1949,7 +1922,6 @@ JMP_updateICAOResults:
 	return pSBIO->lError;
 }
 
-
 long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 {
 	stHndBioPtr		pSBIO = NULL;
@@ -1973,7 +1945,7 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	pLogger = (stLoggerPtr)pSBIO->pLogger;
 
 	pSBIO->lError = ICAO_ERROR_NO_ERROR;
-	iIsOld = 0;
+	g_Tagi_Is_Old = 0;
 
 	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - ConnectCard - IN -> AppIcao: %d", appICAO);
 
@@ -2067,7 +2039,7 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 				PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in Old Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_connectcard;
 			}
-			iIsOld = 1;
+			g_Tagi_Is_Old = 1;
 		}
 	}
 	else
@@ -2152,11 +2124,11 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 				PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Select ID Instance in Old Chip Resp [%02x:%02x][%ld]", ucSw1, ucSw2, pSBIO->lError);
 				goto JMP_connectcard;
 			}
-			iIsOld = 1;
+			g_Tagi_Is_Old = 1;
 		}
 	}
 
-	if (iIsOld)
+	if (g_Tagi_Is_Old)
 	{
 		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - Select Master File for 2012 Chip");
 		// Select Master File for 2012 Chip
@@ -2187,7 +2159,6 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 1");
 
 	// SELECT DIR
 	memset(aApduHeader, 0, sizeof(aApduHeader));
@@ -2215,10 +2186,6 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	}
 	else
 	{
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 2");
-
-
-
 		// READBINARY on DIR
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2246,9 +2213,6 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 3");
-
-
 	// SELECT CARDACCESS
 	memset(aApduHeader, 0, sizeof(aApduHeader));
 	memset(aApduData, 0, sizeof(aApduData));
@@ -2274,10 +2238,6 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 	else
 	{
 		
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 4");
-
-		
-		
 		// READBINARY on DIR
 		memset(aApduHeader, 0, sizeof(aApduHeader));
 		memset(aApduData, 0, sizeof(aApduData));
@@ -2302,10 +2262,6 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		else
 		{
 
-			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 5");
-
-
-
 			// Decode CardAccessData
 #ifdef _DEBUG
 			PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - ConnectCard - OK Read Binary on Dir CA [%ld]", iApduResponseLen); DisplayHex(pLogger, LOG_LEVEL_DEBUG, aApduResponse, iApduResponseLen);
@@ -2318,16 +2274,9 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
-
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 6");
-
-
-	if (iIsOld == 0)
+	if (g_Tagi_Is_Old == 0)
 	{
-		
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 7");
-
-		
+	
 		// PACE
 		
 		//	Update ICAO key
@@ -2838,15 +2787,8 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 		}
 	}
 
-	PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 8");
-
-
-
-	if (appICAO && iIsOld)
+	if (appICAO && g_Tagi_Is_Old)
 	{
-		
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 10");
-
 		
 		//	Update ICAO key
 		///////////////////////////////////////////////////////////////////////
@@ -2890,18 +2832,12 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 			goto JMP_connectcard;
 		}
 
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 11");
-
-
 		if (iApduResponseLen > 0)
 		{
 			PutInLog(pLogger, LOG_LEVEL_WARNING, (char*)"ICAO - ConnectCard - WARNING Select App Resp [%ld]", iApduResponseLen);
 		}
 
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 12");
-
-		
-		
+	
 		// cmd GET CHALLENGE 0x00, 0x84, 0x00, 0x00
 		aApduHeader[0] = 0x00;
 		aApduHeader[1] = 0x84;
@@ -2931,8 +2867,6 @@ long ConnectCard(sHndICAOPtr opSICAO, void* pDev, int appICAO)
 			PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - ConnectCard - ERROR Get Challenge Resp Length [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
 			goto JMP_connectcard;
 		}
-		
-		PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"SAAAAAAAAAAAAAAAAAAAAAAAAPO 13");
 
 		// Authenticate With ICAO SmartCard
 		pSBIO->lReturn = authenticate(opSICAO, pDev, aApduResponse, iApduResponseLen);
@@ -3365,11 +3299,11 @@ unsigned char		ucTmp;
 int					iTmp;
 int					iFingerRef;
 
-int					iFingerRef1 = BIO_FINGER_NONE;
-int					iFingerRef2 = BIO_FINGER_NONE;
-
-int					iFingerRef1TriesLeft = -1;
-int					iFingerRef2TriesLeft = -1;
+//int					iFingerRef1 = BIO_FINGER_NONE;
+//int					iFingerRef2 = BIO_FINGER_NONE;
+//
+//int					iFingerRef1TriesLeft = -1;
+//int					iFingerRef2TriesLeft = -1;
 
 int					iNoFingerBugAttempts = 3;
 	
@@ -3397,9 +3331,16 @@ int					iNoFingerBugAttempts = 3;
 		goto JMP_getFingerRef;
 	}
 
+	opSICAO->iFinger1_Id = BIO_FINGER_NONE;
+	opSICAO->iFinger1_ReTriesLeft = -1;
+
+	opSICAO->iFinger2_Id = BIO_FINGER_NONE;
+	opSICAO->iFinger2_ReTriesLeft = -1;
+
+
 JMP_NO_FINGER_BUG:
 
-	if (iIsOld)
+	if (g_Tagi_Is_Old)
 	{
 		// cmd SELECT 0x00,0xA4,0x04,0x0C
 		aApduHeader[0] = 0x00;
@@ -3495,10 +3436,12 @@ JMP_NO_FINGER_BUG:
 				switch (iFingerRef)
 				{
 				case 1:
-					iFingerRef1 = BIO_FINGER_NONE;
+					//iFingerRef1 = BIO_FINGER_NONE;
+					opSICAO->iFinger1_Id = BIO_FINGER_NONE;
 					break;
 				case 2:
-					iFingerRef2 = BIO_FINGER_NONE;
+					//iFingerRef2 = BIO_FINGER_NONE;
+					opSICAO->iFinger2_Id = BIO_FINGER_NONE;
 					break;
 				}
 				PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getFingerRef - DEBUG Finger %d None", iFingerRef);
@@ -3531,10 +3474,12 @@ JMP_NO_FINGER_BUG:
 										switch (iFingerRef)
 										{
 										case 1:
-											iFingerRef1 = iTmp;
+											//iFingerRef1 = iTmp;
+											opSICAO->iFinger1_Id = iTmp;
 											break;
 										case 2:
-											iFingerRef2 = iTmp;
+											//iFingerRef2 = iTmp;
+											opSICAO->iFinger2_Id = iTmp;
 											break;
 										}
 										PutInLog(pLogger, LOG_LEVEL_DEBUG, (char*)"ICAO - getFingerRef - DEBUG Finger %d found [%ld]", iFingerRef, iTmp);
@@ -3597,24 +3542,28 @@ JMP_NO_FINGER_BUG:
 				switch (iFingerRef)
 				{
 				case 1:
-					iFingerRef1TriesLeft = iTmp;
-					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef1TriesLeft);
+					//iFingerRef1TriesLeft = iTmp;
+					opSICAO->iFinger1_ReTriesLeft = iTmp;
+
+					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_1_TRIES_LEFT, BIO_DATAFIELDPROP_NONE, NULL, opSICAO->iFinger1_ReTriesLeft);
 					if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 					{
 						pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
-						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 1 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, iFingerRef1TriesLeft);
+						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 1 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, opSICAO->iFinger1_ReTriesLeft);
 						pSBIO->lReturn = BIO_ERROR_NO_ERROR;
 						pSBIO->lError = BIO_ERROR_NO_ERROR;
 						//goto JMP_getFingerRef;
 					}
 					break;
 				case 2:
-					iFingerRef2TriesLeft = iTmp;
-					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef2TriesLeft);
+					//iFingerRef2TriesLeft = iTmp;
+					opSICAO->iFinger2_ReTriesLeft = iTmp;
+
+					pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_2_TRIES_LEFT, BIO_DATAFIELDPROP_NONE, NULL, opSICAO->iFinger2_ReTriesLeft);
 					if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 					{
 						pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER2;
-						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 2 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, iFingerRef2TriesLeft);
+						PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR PutData Finger 2 tries left [%ld][%ld][%ld]", pSBIO->lReturn, pSBIO->lError, opSICAO->iFinger2_ReTriesLeft);
 						pSBIO->lReturn = BIO_ERROR_NO_ERROR;
 						pSBIO->lError = BIO_ERROR_NO_ERROR;
 						//goto JMP_getFingerRef;
@@ -3722,19 +3671,23 @@ JMP_NO_FINGER_BUG:
 				iFinger1 = BIO_FINGER_NONE;
 		}
 
-		iFingerRef1 = iFinger1;
-		iFingerRef2 = iFinger2;
-		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getFingerRef - Fingers found [%ld][%ld]", iFingerRef1, iFingerRef2);
+		//iFingerRef1 = iFinger1;
+		//iFingerRef2 = iFinger2;
+
+		opSICAO->iFinger1_Id = iFinger1;
+		opSICAO->iFinger2_Id = iFinger2;
+
+		PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - getFingerRef - Fingers found [%ld][%ld]", opSICAO->iFinger1_Id, opSICAO->iFinger2_Id);
 
 		}
 	
 
-	if (iFingerRef1 == BIO_FINGER_NONE && iFingerRef2 == BIO_FINGER_NONE && iNoFingerBugAttempts > 0)
+	if (opSICAO->iFinger1_Id == BIO_FINGER_NONE && opSICAO->iFinger2_Id == BIO_FINGER_NONE && iNoFingerBugAttempts > 0)
 	{
 		iNoFingerBugAttempts--;
 		goto JMP_NO_FINGER_BUG;
 	}
-	else if (iFingerRef1 == BIO_FINGER_NONE && iFingerRef2 == BIO_FINGER_NONE)
+	else if (opSICAO->iFinger1_Id == BIO_FINGER_NONE && opSICAO->iFinger2_Id == BIO_FINGER_NONE)
 	{
 		pSBIO->lError = BIO_ERROR_NO_DATA_AVAILABLE;
 		PutInLog(pLogger, LOG_LEVEL_ERROR, (char*)"ICAO - getFingerRef - ERROR No data available [%ld][%ld]", pSBIO->lReturn, pSBIO->lError);
@@ -3742,7 +3695,7 @@ JMP_NO_FINGER_BUG:
 	}
 	else
 	{
-		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_1, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef1);
+		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_1, BIO_DATAFIELDPROP_NONE, NULL, opSICAO->iFinger1_Id);
 		if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 		{
 			pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
@@ -3751,7 +3704,7 @@ JMP_NO_FINGER_BUG:
 			pSBIO->lError = BIO_ERROR_NO_ERROR;
 			//goto JMP_getFingerRef;
 		}
-		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_2, BIO_DATAFIELDPROP_NONE, NULL, iFingerRef2);
+		pSBIO->lReturn = sBioPutData(pSBIO, BIO_DATAFIELD_DOC_FINGERID_2, BIO_DATAFIELDPROP_NONE, NULL, opSICAO->iFinger2_Id);
 		if (pSBIO->lReturn != BIO_ERROR_NO_ERROR)
 		{
 			pSBIO->lError = ICAO_ERROR_GETFINGERREF_PUTDATA_FINGER1;
@@ -3811,7 +3764,7 @@ static int getDocumentNumber(sHndICAOPtr opSICAO, void *pDev)
 		goto JMP_getDocumentNumber;
 	}
 
-	if (iIsOld)
+	if (g_Tagi_Is_Old)
 	{
 		// cmd SELECT 0x00,0xA4,0x04,0x0C
 		aApduHeader[0] = 0x00;
@@ -3976,7 +3929,6 @@ JMP_getDocumentNumber:
 	return pSBIO->lError;
 }
 
-
 int ICAOInit(stHndBioPtr	opSBIO)
 {	
 	sHndICAOPtr		pTmpSICAO = NULL;
@@ -4080,7 +4032,7 @@ stLoggerPtr			pLogger = NULL;
 	pSBIO->lReturn = 0;
 	pSBIO->lError = ICAO_ERROR_NO_ERROR;
 
-	mutex_lock(opSICAO->oMutex);
+	//mutex_lock(opSICAO->oMutex);
 
 	switch(iFieldID)
 	{
@@ -4397,7 +4349,7 @@ stLoggerPtr			pLogger = NULL;
 	PutInLog(pLogger, LOG_LEVEL_NOTICE, (char *)"ICAO - AddCaptureField - OUT");
 
 JMP_ICAOAddCaptureField:
-	mutex_unlock(opSICAO->oMutex);
+	//mutex_unlock(opSICAO->oMutex);
 
 	return pSBIO->lError;
 }
@@ -4492,6 +4444,8 @@ long			lTmpError;
 		pSBIO->lReturn = opSICAO->fn_GetCard(pTmpDev);
 		lActualTime = GetTickCount();
 	} while (pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE && (lActualTime - lInitialTime) < iTimeout_ms);
+	
+	
 	if(pSBIO->lReturn == SMARTCARD_ERROR_NO_CARD_AVAILABLE)
 	{
 		pSBIO->lError = ICAO_ERROR_NO_CARD_AVAILABLE;
@@ -4720,7 +4674,7 @@ int				iTimeout = 5000;
 			continue;
 		}
 
-		if (iIsOld)
+		if (g_Tagi_Is_Old)
 		{
 			PutInLog(pLogger, LOG_LEVEL_NOTICE, (char*)"ICAO - MOC - MOC in Old Document [%ld]", iPinNotFoundBugRetryCount);
 

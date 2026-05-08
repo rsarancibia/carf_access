@@ -1,8 +1,5 @@
 using Edv__Id_Tag_Access;
-using Gma.System.MouseKeyHook;
-using System.Text;
-using static System.Runtime.CompilerServices.RuntimeHelpers;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using ImageMagick;
 
 namespace UI_Demo
 {
@@ -21,6 +18,8 @@ namespace UI_Demo
 
 
         private QrKeyboardInterceptor _qr;
+
+        private LedAnimator? led;
 
         public Main_UI_Form()
         {
@@ -57,6 +56,8 @@ namespace UI_Demo
                 {
                     if (glb_EdvLibAPi.Tag__Insert_QR(qrData.Replace("MRZ", "&mrz=")) == true)
                     {
+                        led?.Flash();
+
                         lblQR_NroDoc.Text = cLBL_DOC_NUM + glb_EdvLibAPi.Tag__Get_Numero_Documento();
                         lblQR_FechNac.Text = cLBL_FECH_NAC + glb_EdvLibAPi.Tag__Get_Fecha_Nacimiento();
                         lblQR_FechExp.Text = cLBL_FECH_EXP + glb_EdvLibAPi.Tag__Get_Fecha_Expiracion();
@@ -91,13 +92,17 @@ namespace UI_Demo
             lblQR_NroDoc.Text = cLBL_DOC_NUM;
             lblQR_FechNac.Text = cLBL_FECH_NAC;
             lblQR_FechExp.Text = cLBL_FECH_EXP;
+
+            led = new LedAnimator(btnLed);
+
+
+            //MessageBox.Show(RuntimeInformation.ProcessArchitecture.ToString());
+
         }
 
 
-        private void button1_Click(object sender, EventArgs e)
+        private void btnCapture_Finger_Live_Click(object sender, EventArgs e)
         {
-            //glb_EdvLibAPi?.Id_Tag__Read();
-
             int image_width = 0;
             int image_height = 0;
             int dpi = 0;
@@ -109,10 +114,6 @@ namespace UI_Demo
             {
                 Bitmap bmp = Helper.RawToBitmap(img_raw_buffer, image_width, image_height);
                 pbDisplay.Image = bmp;
-
-                //byte[] iso_image = Array.Empty<byte>();
-                //glb_EdvLibAPi?.Finger__Get_Iso_19794_2(img_raw_buffer, (ushort)image_width, (ushort)image_height, (ushort)dpi, ref iso_image);
-
             }
         }
 
@@ -122,24 +123,39 @@ namespace UI_Demo
             glb_EdvLibAPi = null;
         }
 
-        private void btnDoMoc_Click(object sender, EventArgs e)
+        private async void btnDoMocF1_Click(object sender, EventArgs e)
         {
             lblTipo_Cedula_Val.Text = cTIPO_CEDULA_UNK;
-            glb_EdvLibAPi?.Id_Tag__MOC();
+
+            if (glb_EdvLibAPi is not null)
+            {
+                int status = await glb_EdvLibAPi.Tag__MOC();
+
+            }
         }
+
+        private async void btnDoMocF2_Click(object sender, EventArgs e)
+        {
+            lblTipo_Cedula_Val.Text = cTIPO_CEDULA_UNK;
+
+            if (glb_EdvLibAPi is not null)
+            {
+                int status = await glb_EdvLibAPi.Tag__MOC();
+            }
+        }
+
+        //byte[] jp2 = await api.Tag__Get_Face_Picture();
+
 
         private void btnClearLog_Click(object sender, EventArgs e)
         {
             richTB_Log.Clear();
         }
 
-        private void button1_Click_1(object sender, EventArgs e)
-        {
-            glb_EdvLibAPi?.Test_Lector();
-
-            //glb_EdvLibAPi?.Id_Tag__MOC();
-
-        }
+        //private void button1_Click_1(object sender, EventArgs e)
+        //{
+        //    glb_EdvLibAPi?.Tag__MOC();
+        //}
 
         private void GetLicense_Click(object sender, EventArgs e)
         {
@@ -172,9 +188,28 @@ namespace UI_Demo
             glb_EdvLibAPi?.Prueba_Connect_appIcao(1);
         }
 
-        private void btnTag_Get_Dg_Click(object sender, EventArgs e)
+        private async void btnTag_Get_Dg_Click(object sender, EventArgs e)
         {
-            glb_EdvLibAPi?.Tag__Get_Dg_Data(4000);
+            if (glb_EdvLibAPi is null)
+                return;
+
+            EdvLibAPi.DgDataResult result = await glb_EdvLibAPi.Tag__Get_Dg_Data(4000);
+
+            if (result.Status == 0)
+            {
+                lblDedo1.Text = EdvLibAPi.FingerDescription(result.Finger1);
+                lblDedo2.Text = EdvLibAPi.FingerDescription(result.Finger2);
+            }
+
+            MagickNET.Initialize();
+
+            byte[] jp2_face = await glb_EdvLibAPi.Tag__Get_Face_Picture();
+            using var image_face = new MagickImage(jp2_face);
+            pbUserPhoto.Image = image_face.ToBitmap();
+
+            byte[] jp2_signature = await glb_EdvLibAPi.Tag__Get_Signature_Picture();
+            using var image_signature = new MagickImage(jp2_signature);
+            pbSignature.Image = image_signature.ToBitmap();
         }
     }
 }

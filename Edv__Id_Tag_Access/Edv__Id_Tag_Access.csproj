@@ -13,6 +13,8 @@
 			<HintPath>lib\SecuGen.FDxSDKPro.DotNet.Windows.dll</HintPath>
 			<Private>true</Private>
 		</Reference>
+		<PackageReference Include="Magick.NET-Q8-AnyCPU" Version="14.13.0" />
+		<PackageReference Include="Magick.NET.SystemDrawing" Version="8.0.21" />
 
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.6" />
 		<PackageReference Include="PCSC" Version="7.0.1" />

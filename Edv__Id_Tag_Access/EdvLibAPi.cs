@@ -3,13 +3,9 @@ using Edv__Id_Tag_Access.Devices.FingerReader;
 using Edv__Id_Tag_Access.Devices.NFC;
 using Edv__Id_Tag_Access.ImgEngines;
 using Edv__Id_Tag_Access.myLog;
-using Edv__Id_Tag_Access.Pace;
-using Microsoft.VisualBasic;
 using Serilog;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Edv__Id_Tag_Access
 {
@@ -48,13 +44,20 @@ namespace Edv__Id_Tag_Access
         public static extern int Edv_Init();
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
-        public static extern int Edv_Get_DgData(int timeout_ms);
+        public static extern int Edv_Get_DgData(int timeout_ms, out int Finger1, out int Finger2);
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int Edv__Set_Tag_Info(byte[] docNum, int docnum_len, byte[] DoB, int dob_len, byte[] DoE, int doe_len);
 
         [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
         public static extern int Edv_Moc();
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Get_Face_Picture(byte[] output_buffer, ref int total_out);
+
+        [DllImport("openpace_wrapper.dll", CallingConvention = CallingConvention.Cdecl)]
+        public static extern int Edv_Get_Signature_Picture(byte[] output_buffer, ref int total_out);
+
 
 
         private const string cREADER_NAME = "HID Global OMNIKEY 5022 Smart Card Reader 0";
@@ -72,6 +75,16 @@ namespace Edv__Id_Tag_Access
         public delegate void api_Tag_Type(string tag_type);
 
         private api_Tag_Type? glb_api_Tag_Type = null;
+
+
+
+//        using ImageMagick;
+
+//byte[] jp2 = File.ReadAllBytes("foto.jp2");
+
+//using var image = new MagickImage(jp2);
+
+//    pictureBox1.Image = image.ToBitmap();
 
 
         public int Prueba_Connect_appIcao(int appIcao)
@@ -235,55 +248,86 @@ namespace Edv__Id_Tag_Access
             return Cedula_Info.strFechaExpiracion_HumanFormat;
         }
 
-        public int Tag__Get_Dg_Data(int timeout_ms)
+
+        public class DgDataResult
         {
-            return Edv_Get_DgData(timeout_ms);
+            public int Status { get; set; }
+            public int Finger1 { get; set; }
+            public int Finger2 { get; set; }
+        }
+        public async Task<DgDataResult> Tag__Get_Dg_Data(int timeout_ms)
+        {
+            return await Task.Run(() =>
+            {
+                DgDataResult result = new DgDataResult();
+
+                result.Status = Edv_Get_DgData(
+                    timeout_ms,
+                    out int finger1,
+                    out int finger2);
+
+                result.Finger1 = finger1;
+                result.Finger2 = finger2;
+
+                return result;
+            });
         }
 
-        public void Test_Lector()
-        { 
-            if (glb_Cedula_IO is not null)
+        public async Task<byte[]> Tag__Get_Face_Picture()
+        {
+            return await Task.Run(() =>
             {
-                try {
+                byte[] output_buffer = new byte[1024 * 30]; // Ajusta el tamaño según lo necesario
+                int total_out = output_buffer.Length;
+                int status = Edv_Get_Face_Picture(output_buffer, ref total_out);
+                if (status != 0)
+                {
+                    Log.Error("Error en Edv_Get_Face_Picture: " + status);
+                    return Array.Empty<byte>();
+                }
+                byte[] face_picture = new byte[total_out];
+                Array.Copy(output_buffer, face_picture, total_out);
+                return face_picture;
+            });
+        }
 
-                    //bool tag_on_field = false;
 
-                    //glb_Nfc_Reader?.Detect_Card(ref tag_on_field);
 
-                    Edv_Moc();
+
+        public async Task<byte[]> Tag__Get_Signature_Picture()
+        {
+            return await Task.Run(() =>
+            {
+                byte[] output_buffer = new byte[1024 * 30]; // Ajusta el tamaño según lo necesario
+                int total_out = output_buffer.Length;
+                int status = Edv_Get_Signature_Picture(output_buffer, ref total_out);
+                if (status != 0)
+                {
+                    Log.Error("Error en Edv_Get_Face_Picture: " + status);
+                    return Array.Empty<byte>();
+                }
+                byte[] face_picture = new byte[total_out];
+                Array.Copy(output_buffer, face_picture, total_out);
+                return face_picture;
+            });
+        }
+
+
+        public async Task<int> Tag__MOC()
+        {
+            return await Task.Run(() =>
+            {
+                try
+                {
+                    return Edv_Moc();
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("Error en Test_Lector: " + ex.Message);
+                    Log.Error("Error en MOC " + ex.Message);
+
+                    return -1; // o el código de error que quieras
                 }
-            }
-        }
-
-
-        public int Id_Tag__MOC() 
-        {
-            int status = 0;
-
-            while(true)
-            {
-                if (glb_Nfc_Reader is null)
-                {
-                    status = 1;
-                    break;
-                }
-
-                if (glb_Cedula_IO is null)
-                {
-                    status = 2;
-                    break;
-                }
-
-                
-
-                break;
-            }
-
-            return status;
+            });
         }
 
         public int Finger__Capture(ref byte[] raw_image)
@@ -331,14 +375,8 @@ namespace Edv__Id_Tag_Access
                 try
                 {
                     Edv_Set_Template(iso_compact, iso_compact.Length);
-                } catch(Exception e) { 
-                
-                    int x = 0;
+                } catch{ 
                 };
-                
-
-                //Log.Logger.HexDump(iso_compact,data_lenght : 16);
-
                 break;
             }
 
@@ -406,6 +444,28 @@ namespace Edv__Id_Tag_Access
 
             Log.Information("DLL End - Done");
         }
+
+        public static string FingerDescription(int val)
+        {
+            switch (val)
+            {
+                case 0: return "No existe";
+                case 1: return "Pulgar derecho";
+                case 2: return "Indice derecho";
+                case 3: return "Medio derecho";
+                case 4: return "Anular derecho";
+                case 5: return "Menique derecho";
+
+                case 6: return "Pulgar izquierdo";
+                case 7: return "Indice izquierdo";
+                case 8: return "Medio izquierdo";
+                case 9: return "Anular izquierdo";
+                case 10: return "Menique izquierdo";
+
+                default: return "Dedo desconocido";
+            }
+        }
+
 
         enum LogLevelDll
         {

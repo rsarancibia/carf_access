@@ -155,12 +155,12 @@ int Add_Client_License_Info(unsigned char* buffer_in)
         break;
     }
 
-    PutInLog(NULL, 0, "LIC USER");
-    DisplayHex(0, g_ClientLicenseCtrlData.User, cUSER_LEN);
-    PutInLog(NULL, 0, "LIC HWID");
-    DisplayHex(0, g_ClientLicenseCtrlData.HwId, cHWID_LEN);
-    PutInLog(NULL, 0, "LIC DAYS");
-    DisplayHex(0, g_ClientLicenseCtrlData.Days, cDAYS_LEN);
+    //PutInLog(NULL, 0, "LIC USER");
+    //DisplayHex(0, g_ClientLicenseCtrlData.User, cUSER_LEN);
+    //PutInLog(NULL, 0, "LIC HWID");
+    //DisplayHex(0, g_ClientLicenseCtrlData.HwId, cHWID_LEN);
+    //PutInLog(NULL, 0, "LIC DAYS");
+    //DisplayHex(0, g_ClientLicenseCtrlData.Days, cDAYS_LEN);
 
     return status;
 }

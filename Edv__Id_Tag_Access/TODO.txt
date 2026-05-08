@@ -1,0 +1,5 @@
+1. Implementar mutex.. probar
+2. Crear proyecto DLL e incorporar fuente de openPACE
+3. què hace scl_GetFnBitmap?
+4. Implementar un EDV_End () !.. Hay mallocs en las funciones.
+5. Por què se envìa un "Get Challenge" despuès de establecer un canal seguro !
